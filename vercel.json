@@ -6,17 +6,21 @@
       "runtime": "vercel-php@0.6.2"
     }
   },
-  "redirects": [
+  "routes": [
     {
-      "source": "/index.php",
-      "destination": "/",
-      "permanent": true
-    }
-  ],
-  "rewrites": [
+      "src": "^/$",
+      "dest": "/api/index.php"
+    },
     {
-      "source": "/(.*)",
-      "destination": "/api/index.php"
+      "src": "^/index\\.php$",
+      "dest": "/api/index.php"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.php"
     }
   ],
   "env": {
