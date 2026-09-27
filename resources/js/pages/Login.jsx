@@ -92,12 +92,7 @@ export default function Login() {
                                 className="btn btn-primary btn-block" 
                                 disabled={loading}
                             >
-                                {loading ? (
-                                    <>
-                                        <span className="auth-inline-spinner"></span>
-                                        Signing in...
-                                    </>
-                                ) : 'Sign In'}
+                                {loading ? 'Signing in...' : 'Sign In'}
                             </button>
                         </form>
                         <div className="auth-footer">

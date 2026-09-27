@@ -21,22 +21,8 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil((async () => {
-        const cacheKeys = await caches.keys();
-        await Promise.all(cacheKeys.map((key) => caches.delete(key)));
-        await self.clients.claim();
-        await self.registration.unregister();
-
-        const clients = await self.clients.matchAll({
-            type: 'window',
-            includeUncontrolled: true,
-        });
-
-        await Promise.all(clients.map((client) => client.navigate(client.url)));
-    })());
+    event.waitUntil(self.registration.unregister());
 });
-
-self.addEventListener('fetch', () => {});
 JS;
 
 $serviceWorkerResponse = function () use ($cleanupServiceWorker) {
@@ -46,7 +32,6 @@ $serviceWorkerResponse = function () use ($cleanupServiceWorker) {
         'Pragma' => 'no-cache',
         'Expires' => '0',
         'Service-Worker-Allowed' => '/',
-        'Clear-Site-Data' => '"cache", "storage"',
     ]);
 };
 
@@ -63,7 +48,6 @@ $manifestResponse = function () {
         'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
         'Pragma' => 'no-cache',
         'Expires' => '0',
-        'Clear-Site-Data' => '"cache"',
     ]);
 };
 

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
     Bell,
+    Activity,
     ChevronDown,
     ChevronRight,
     Headphones,
@@ -58,6 +59,12 @@ const SECTION_DETAILS = {
         title: 'Support inbox',
         description: 'Stay on top of customer concerns and keep response times under control.',
     },
+    activity: {
+        label: 'Activity',
+        eyebrow: 'Review queue',
+        title: 'Activity and listings',
+        description: 'Follow recent changes and review seller parts waiting for approval.',
+    },
     account: {
         label: 'Account',
         eyebrow: 'Settings',
@@ -93,6 +100,7 @@ const getSectionKey = (pathname) => {
     if (pathname.startsWith('/admin/orders')) return 'orders';
     if (pathname.startsWith('/admin/products')) return 'products';
     if (pathname.startsWith('/admin/users')) return 'users';
+    if (pathname.startsWith('/admin/activity')) return 'activity';
     if (pathname.startsWith('/admin/customer-service') || pathname.startsWith('/admin/concerns')) return 'support';
     if (pathname.startsWith('/admin/account')) return 'account';
     return 'dashboard';
@@ -144,6 +152,7 @@ export default function AdminLayout() {
         { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, badge: sidebarCounts.orders || null },
         { to: '/admin/products', label: 'Inventory', icon: Package, badge: sidebarCounts.products || null },
         { to: '/admin/users', label: 'Users', icon: Users, badge: sidebarCounts.users || null },
+        { to: '/admin/activity', label: 'Activity', icon: Activity, badge: null },
         { to: '/admin/customer-service', label: 'Support', icon: Headphones, badge: sidebarCounts.newConcerns > 0 ? sidebarCounts.newConcerns : null },
         { to: '/admin/account', label: 'Settings', icon: Settings, badge: null },
     ];
@@ -558,8 +567,9 @@ export default function AdminLayout() {
 
             {logoutLoading ? (
                 <div className="admin-portal__overlay">
-                    <div className="admin-portal__overlay-card">
-                        <div className="admin-portal__overlay-spinner" />
+                    <div className="admin-portal__overlay-card" role="status" aria-live="polite">
+                        <span className="cv-skeleton-block" style={{ width: 180, height: 14, margin: '0 auto 12px' }} />
+                        <span className="cv-skeleton-block" style={{ width: 124, height: 14, margin: '0 auto' }} />
                         <p>Signing out of the admin workspace...</p>
                     </div>
                 </div>

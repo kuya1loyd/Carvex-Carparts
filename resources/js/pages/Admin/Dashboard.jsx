@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
     AlertTriangle,
     ArrowRight,
+    ClipboardCheck,
     CircleDollarSign,
     Headphones,
     Package,
@@ -10,6 +11,7 @@ import {
     Users,
 } from 'lucide-react';
 import adminService from '../../services/adminService';
+import PageSkeleton from '../../components/Skeleton';
 
 const currencyFormatter = new Intl.NumberFormat('en-PH', {
     style: 'currency',
@@ -85,16 +87,7 @@ export default function AdminDashboard() {
     }, []);
 
     if (loading) {
-        return (
-            <div className="admin-page">
-                <div className="admin-workspace">
-                    <div className="admin-loading">
-                        <div className="spinner" />
-                        <p>Loading dashboard insights...</p>
-                    </div>
-                </div>
-            </div>
-        );
+        return <PageSkeleton variant="dashboard" label="Loading admin dashboard" />;
     }
 
     if (error || !stats) {
@@ -115,6 +108,7 @@ export default function AdminDashboard() {
     const totalProducts = Number(stats.total_products || 0);
     const totalUsers = Number(stats.total_users || 0);
     const pendingConcerns = Number(stats.pending_customer_concerns || 0);
+    const pendingSellerListings = Number(stats.pending_seller_listings || stats.pending_listings || 0);
     const lowStockCount = Number(stats.low_stock_count || 0);
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
     const recentOrders = stats.recent_orders || [];
@@ -127,6 +121,7 @@ export default function AdminDashboard() {
     const productsRoute = '/admin/products';
     const lowStockRoute = '/admin/products?stock=low&source=dashboard';
     const supportRoute = '/admin/customer-service';
+    const activityRoute = '/admin/activity';
     const usersRoute = '/admin/users';
 
     const primaryCards = [
@@ -147,6 +142,15 @@ export default function AdminDashboard() {
             to: lowStockRoute,
             action: 'View low stock products',
             color: lowStockCount > 0 ? 'amber' : 'green',
+        },
+        {
+            icon: ClipboardCheck,
+            label: 'Seller listings to review',
+            value: compactNumberFormatter.format(pendingSellerListings),
+            meta: pendingSellerListings > 0 ? 'New parts are waiting for an admin decision.' : 'No seller listings are waiting for review.',
+            to: activityRoute,
+            action: 'Open review queue',
+            color: pendingSellerListings > 0 ? 'amber' : 'green',
         },
         {
             icon: Headphones,
@@ -197,6 +201,15 @@ export default function AdminDashboard() {
             tone: lowStockCount > 0 ? 'amber' : 'green',
         },
         {
+            icon: ClipboardCheck,
+            title: 'Seller review queue',
+            description: 'Check submitted parts before they are published in the catalog.',
+            value: pendingSellerListings > 0 ? `${pendingSellerListings} listings awaiting review` : 'No listings awaiting review',
+            to: activityRoute,
+            action: 'Review seller parts',
+            tone: pendingSellerListings > 0 ? 'amber' : 'green',
+        },
+        {
             icon: Headphones,
             title: 'Support coverage',
             description: 'Keep customer replies moving without leaving the dashboard.',
@@ -220,6 +233,7 @@ export default function AdminDashboard() {
                             <span className="admin-chip">{currencyFormatter.format(totalRevenue)} revenue</span>
                             <span className="admin-chip">{totalOrders} orders processed</span>
                             <span className="admin-chip">{lowStockCount} low stock items</span>
+                            <span className="admin-chip">{pendingSellerListings} seller listings to review</span>
                         </div>
                         <div className="admin-dashboard-actions">
                             <Link to={ordersRoute} className="btn btn-primary">
@@ -230,6 +244,9 @@ export default function AdminDashboard() {
                             </Link>
                             <Link to={supportRoute} className="btn btn-secondary">
                                 Customer support
+                            </Link>
+                            <Link to={activityRoute} className="btn btn-secondary">
+                                Seller activity
                             </Link>
                         </div>
                     </div>
@@ -337,6 +354,7 @@ export default function AdminDashboard() {
                                 <h2>Recent activity</h2>
                                 <p>A live pulse of the newest changes across orders, customers, and support.</p>
                             </div>
+                            <Link to={activityRoute} className="admin-inline-badge">Open activity</Link>
                         </div>
 
                         {activityFeed.length === 0 ? (
@@ -415,6 +433,11 @@ export default function AdminDashboard() {
                                 <span>Low stock</span>
                                 <strong>{compactNumberFormatter.format(lowStockCount)}</strong>
                                 <small>Products that should be restocked soon.</small>
+                            </div>
+                            <div className="admin-dashboard-summary-card">
+                                <span>Seller review queue</span>
+                                <strong>{compactNumberFormatter.format(pendingSellerListings)}</strong>
+                                <small>Seller parts waiting for an approval decision.</small>
                             </div>
                             <div className="admin-dashboard-summary-card">
                                 <span>Support queue</span>

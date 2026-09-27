@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import cartService from '../services/cartService';
 import { useAuth } from './AuthContext';
+import { getApiCacheScope } from '../services/api';
 
 const CartContext = createContext(undefined);
-const CUSTOMER_CART_CACHE_KEY = 'customer_cart_cache_v1';
+const CUSTOMER_CART_CACHE_PREFIX = 'customer_cart_cache_v2:';
+const getCustomerCartCacheKey = () => `${CUSTOMER_CART_CACHE_PREFIX}${getApiCacheScope()}`;
 
 const readCachedCart = () => {
     try {
-        const raw = localStorage.getItem(CUSTOMER_CART_CACHE_KEY);
+        const raw = localStorage.getItem(getCustomerCartCacheKey());
         const parsed = raw ? JSON.parse(raw) : null;
         const items = Array.isArray(parsed?.items) ? parsed.items : [];
         const summary = parsed?.summary && typeof parsed.summary === 'object' ? parsed.summary : null;
@@ -19,7 +21,7 @@ const readCachedCart = () => {
 
 const persistCachedCart = (items, summary) => {
     try {
-        localStorage.setItem(CUSTOMER_CART_CACHE_KEY, JSON.stringify({ items, summary }));
+        localStorage.setItem(getCustomerCartCacheKey(), JSON.stringify({ items, summary }));
     } catch {
         // Ignore storage failures (private mode/quota issues).
     }
@@ -27,7 +29,7 @@ const persistCachedCart = (items, summary) => {
 
 const clearCachedCart = () => {
     try {
-        localStorage.removeItem(CUSTOMER_CART_CACHE_KEY);
+        localStorage.removeItem(getCustomerCartCacheKey());
     } catch {
         // Ignore storage failures.
     }
@@ -55,9 +57,13 @@ const normalizeItem = (item) => ({
 
 export const CartProvider = ({ children }) => {
     const { isAuthenticated, isAdmin } = useAuth();
-    const [cartItems, setCartItems] = useState(() => readCachedCart().items);
-    const [cartSummary, setCartSummary] = useState(() => readCachedCart().summary);
+    const [initialCart] = useState(readCachedCart);
+    const [cartItems, setCartItems] = useState(initialCart.items.map(normalizeItem));
+    const [cartSummary, setCartSummary] = useState(initialCart.summary);
     const [loading, setLoading] = useState(false);
+    const cartItemsRef = useRef(initialCart.items.map(normalizeItem));
+    const mutationVersionRef = useRef(new Map());
+    const cartRevisionRef = useRef(0);
     const syncTimerRef = useRef(null);
     const optimisticCartItemIdRef = useRef(-1);
     const retryFetchTimerRef = useRef(null);
@@ -66,7 +72,10 @@ export const CartProvider = ({ children }) => {
         let frameId = null;
 
         const runBootstrap = () => {
+            cartRevisionRef.current += 1;
+
             if (isAdmin) {
+                cartItemsRef.current = [];
                 setCartItems([]);
                 setCartSummary(null);
                 clearCachedCart();
@@ -74,8 +83,19 @@ export const CartProvider = ({ children }) => {
             }
 
             if (isAuthenticated) {
-                fetchCart();
+                const cachedCart = readCachedCart();
+                const hasCachedCart = cachedCart.items.length > 0 || Boolean(cachedCart.summary);
+                if (hasCachedCart) {
+                    const cachedItems = cachedCart.items.map(normalizeItem);
+                    commitCart(cachedItems, cachedCart.summary || buildSummaryFromItems(cachedItems));
+                } else {
+                    cartItemsRef.current = [];
+                    setCartItems([]);
+                    setCartSummary(null);
+                }
+                fetchCart({ silent: hasCachedCart });
             } else {
+                cartItemsRef.current = [];
                 setCartItems([]);
                 setCartSummary(null);
                 clearCachedCart();
@@ -121,6 +141,51 @@ export const CartProvider = ({ children }) => {
         };
     };
 
+    const commitCart = (items, summary = null) => {
+        const normalizedItems = items.map(normalizeItem);
+        const nextSummary = summary || buildSummaryFromItems(normalizedItems);
+        cartItemsRef.current = normalizedItems;
+        setCartItems(normalizedItems);
+        setCartSummary(nextSummary);
+        persistCachedCart(normalizedItems, nextSummary);
+    };
+
+    const beginItemMutation = (cartItemId) => {
+        const key = String(cartItemId);
+        const nextVersion = (mutationVersionRef.current.get(key) || 0) + 1;
+        mutationVersionRef.current.set(key, nextVersion);
+        cartRevisionRef.current += 1;
+        return nextVersion;
+    };
+
+    const rollbackItemMutation = (cartItemId, priorItem, priorIndex, version) => {
+        if (mutationVersionRef.current.get(String(cartItemId)) !== version) {
+            return;
+        }
+
+        const productId = toNumber(priorItem?.product?.id || priorItem?.product_id);
+        const currentProductItem = productId > 0
+            ? cartItemsRef.current.find((item) => (
+                toNumber(item?.product?.id || item?.product_id) === productId && toNumber(item?.id) > 0
+            )) || cartItemsRef.current.find((item) => toNumber(item?.product?.id || item?.product_id) === productId)
+            : null;
+        const next = cartItemsRef.current.filter((item) => (
+            toNumber(item?.id) !== toNumber(cartItemId)
+            && !(productId > 0 && toNumber(item?.product?.id || item?.product_id) === productId)
+        ));
+        if (priorItem) {
+            const restoredItem = currentProductItem && toNumber(currentProductItem.id) > 0
+                ? { ...currentProductItem, ...priorItem, id: currentProductItem.id }
+                : priorItem;
+            next.splice(Math.min(priorIndex, next.length), 0, restoredItem);
+        }
+        commitCart(next);
+        cartRevisionRef.current += 1;
+        if (toNumber(cartItemId) >= 0) {
+            syncCartInBackground();
+        }
+    };
+
     const syncCartInBackground = () => {
         if (syncTimerRef.current !== null) {
             window.clearTimeout(syncTimerRef.current);
@@ -137,6 +202,8 @@ export const CartProvider = ({ children }) => {
     const fetchCart = async (options = {}) => {
         const silent = Boolean(options?.silent);
         const timeoutMs = Number(options?.timeoutMs || 6000);
+        const revisionAtStart = cartRevisionRef.current;
+        const scopeAtStart = getApiCacheScope();
         const isTimeoutError = (error) => {
             const code = String(error?.code || '').toUpperCase();
             const message = String(error?.message || '').toLowerCase();
@@ -164,11 +231,14 @@ export const CartProvider = ({ children }) => {
                     }
                     : buildSummaryFromItems(nextItems);
 
-                setCartItems(nextItems);
-                setCartSummary(nextSummary);
-                persistCachedCart(nextItems, nextSummary);
+                if (cartRevisionRef.current === revisionAtStart && scopeAtStart === getApiCacheScope()) {
+                    commitCart(nextItems, nextSummary);
+                }
                 return;
             } catch {
+                if (scopeAtStart !== getApiCacheScope()) {
+                    return;
+                }
                 // Fallback to cart endpoint if summary endpoint is slow/unavailable.
             }
 
@@ -176,10 +246,14 @@ export const CartProvider = ({ children }) => {
             const rawItems = cartRes?.data?.data;
             const nextItems = (Array.isArray(rawItems) ? rawItems : []).map(normalizeItem);
             const nextSummary = buildSummaryFromItems(nextItems);
-            setCartItems(nextItems);
-            setCartSummary(nextSummary);
-            persistCachedCart(nextItems, nextSummary);
+            if (cartRevisionRef.current === revisionAtStart && scopeAtStart === getApiCacheScope()) {
+                commitCart(nextItems, nextSummary);
+            }
         } catch (error) {
+            if (scopeAtStart !== getApiCacheScope()) {
+                return;
+            }
+
             const timedOut = isTimeoutError(error);
             if (timedOut) {
                 console.warn('Cart request timed out. Using cached cart and retrying in background.');
@@ -188,14 +262,16 @@ export const CartProvider = ({ children }) => {
             }
 
             const cached = readCachedCart();
+            if (cartRevisionRef.current !== revisionAtStart) {
+                return;
+            }
+
             if (cached.items.length > 0 || cached.summary) {
                 const normalizedCachedItems = cached.items.map(normalizeItem);
-                setCartItems(normalizedCachedItems);
-                setCartSummary(cached.summary || buildSummaryFromItems(normalizedCachedItems));
+                commitCart(normalizedCachedItems, cached.summary || buildSummaryFromItems(normalizedCachedItems));
             } else {
                 const emptySummary = buildSummaryFromItems([]);
-                setCartItems([]);
-                setCartSummary(emptySummary);
+                commitCart([], emptySummary);
                 persistCachedCart([], emptySummary);
             }
 
@@ -215,60 +291,47 @@ export const CartProvider = ({ children }) => {
     };
 
     const addItem = async (productId, quantity, optimisticProduct) => {
-        let insertedOptimisticItemId = null;
-        let incrementedExistingItem = false;
+        const scopeAtStart = getApiCacheScope();
+        const amount = Math.max(1, toNumber(quantity || 1));
+        const currentItems = cartItemsRef.current;
+        const existingItem = currentItems.find((item) => toNumber(item?.product?.id || item?.product_id || 0) === toNumber(productId));
+        const existingIndex = existingItem ? currentItems.indexOf(existingItem) : -1;
+        cartRevisionRef.current += 1;
 
         if (optimisticProduct) {
-            setCartItems((previous) => {
-                const next = [...previous];
-                const matchIndex = next.findIndex((item) => {
-                    const candidateProductId = toNumber(item?.product?.id || item?.product_id || 0);
-                    return candidateProductId === toNumber(productId);
+            const next = [...currentItems];
+            if (existingIndex >= 0) {
+                next[existingIndex] = { ...existingItem, quantity: toNumber(existingItem.quantity) + amount };
+            } else {
+                const optimisticItemId = optimisticCartItemIdRef.current;
+                optimisticCartItemIdRef.current -= 1;
+                next.unshift({
+                    id: optimisticItemId,
+                    product_id: toNumber(productId),
+                    quantity: amount,
+                    product: {
+                        id: toNumber(productId),
+                        name: String(optimisticProduct?.name || 'Product'),
+                        brand: optimisticProduct?.brand,
+                        price: toNumber(optimisticProduct?.price || 0),
+                        images: optimisticProduct?.images,
+                    },
                 });
-
-                if (matchIndex >= 0) {
-                    const current = next[matchIndex];
-                    next[matchIndex] = {
-                        ...current,
-                        quantity: toNumber(current?.quantity || 0) + toNumber(quantity || 0),
-                    };
-                    incrementedExistingItem = true;
-                } else {
-                    const optimisticItemId = optimisticCartItemIdRef.current;
-                    optimisticCartItemIdRef.current -= 1;
-                    insertedOptimisticItemId = optimisticItemId;
-
-                    const optimisticItem = {
-                        id: optimisticItemId,
-                        product_id: toNumber(productId),
-                        quantity: toNumber(quantity || 0),
-                        product: {
-                            id: toNumber(productId),
-                            name: String(optimisticProduct?.name || 'Product'),
-                            brand: optimisticProduct?.brand,
-                            price: toNumber(optimisticProduct?.price || 0),
-                            images: optimisticProduct?.images,
-                        },
-                    };
-
-                    next.unshift(optimisticItem);
-                }
-
-                const summary = buildSummaryFromItems(next);
-                setCartSummary(summary);
-                persistCachedCart(next, summary);
-                return next;
-            });
+            }
+            commitCart(next);
 
             window.dispatchEvent(new CustomEvent('carvex:cart-item-added'));
         }
 
         try {
             const response = await cartService.addItem({ product_id: productId, quantity }, { timeout: 6000 });
+            if (scopeAtStart !== getApiCacheScope()) {
+                return false;
+            }
             const added = response?.data?.data ? normalizeItem(response.data.data) : null;
 
-            setCartItems((previous) => {
-                const next = [...previous];
+            const previous = cartItemsRef.current;
+            const next = [...previous];
                 const matchIndex = next.findIndex((item) => {
                     const candidateProductId = toNumber(item?.product?.id || item?.product_id || 0);
                     return candidateProductId === toNumber(productId);
@@ -281,23 +344,27 @@ export const CartProvider = ({ children }) => {
                             ...current,
                             ...added,
                             product: added.product || current.product,
-                            quantity: toNumber(added?.quantity || current?.quantity || 0),
+                            quantity: optimisticProduct
+                                ? toNumber(current?.quantity || 0)
+                                : toNumber(added?.quantity || current?.quantity || 0),
                         };
-                    } else if (!optimisticProduct || !incrementedExistingItem) {
+                    } else if (!optimisticProduct) {
                         next[matchIndex] = {
                             ...current,
-                            quantity: toNumber(current?.quantity || 0) + toNumber(quantity || 0),
+                            quantity: toNumber(current?.quantity || 0) + amount,
                         };
                     }
                 } else if (added) {
                     next.unshift(added);
+                } else if (!optimisticProduct) {
+                    next.unshift({
+                        id: optimisticCartItemIdRef.current--,
+                        product_id: toNumber(productId),
+                        quantity: amount,
+                        product: { id: toNumber(productId), name: 'Product', price: 0, images: [] },
+                    });
                 }
-
-                const summary = buildSummaryFromItems(next);
-                setCartSummary(summary);
-                persistCachedCart(next, summary);
-                return next;
-            });
+            commitCart(next);
 
             if (!optimisticProduct) {
                 window.dispatchEvent(new CustomEvent('carvex:cart-item-added'));
@@ -306,38 +373,18 @@ export const CartProvider = ({ children }) => {
             syncCartInBackground();
             return true;
         } catch (error) {
-            if (optimisticProduct) {
-                setCartItems((previous) => {
-                    let next = [...previous];
-
-                    if (insertedOptimisticItemId !== null) {
-                        next = next.filter((item) => toNumber(item?.id) !== toNumber(insertedOptimisticItemId));
+            if (optimisticProduct && scopeAtStart === getApiCacheScope()) {
+                const next = [...cartItemsRef.current];
+                const matchIndex = next.findIndex((item) => toNumber(item?.product?.id || item?.product_id || 0) === toNumber(productId));
+                if (matchIndex >= 0) {
+                    const restoredQuantity = toNumber(next[matchIndex]?.quantity || 0) - amount;
+                    if (restoredQuantity <= 0) {
+                        next.splice(matchIndex, 1);
                     } else {
-                        const matchIndex = next.findIndex((item) => {
-                            const candidateProductId = toNumber(item?.product?.id || item?.product_id || 0);
-                            return candidateProductId === toNumber(productId);
-                        });
-
-                        if (matchIndex >= 0) {
-                            const current = next[matchIndex];
-                            const restoredQuantity = toNumber(current?.quantity || 0) - toNumber(quantity || 0);
-
-                            if (restoredQuantity <= 0) {
-                                next.splice(matchIndex, 1);
-                            } else {
-                                next[matchIndex] = {
-                                    ...current,
-                                    quantity: restoredQuantity,
-                                };
-                            }
-                        }
+                        next[matchIndex] = { ...next[matchIndex], quantity: restoredQuantity };
                     }
-
-                    const summary = buildSummaryFromItems(next);
-                    setCartSummary(summary);
-                    persistCachedCart(next, summary);
-                    return next;
-                });
+                    commitCart(next);
+                }
             }
 
             throw error;
@@ -345,69 +392,101 @@ export const CartProvider = ({ children }) => {
     };
 
     const updateItem = async (cartItemId, quantity) => {
-        try {
-            if (quantity <= 0) {
-                await cartService.removeItem(cartItemId);
-                setCartItems((previous) => {
-                    const next = previous.filter((item) => toNumber(item?.id) !== toNumber(cartItemId));
-                    const summary = buildSummaryFromItems(next);
-                    setCartSummary(summary);
-                    persistCachedCart(next, summary);
-                    return next;
-                });
-                syncCartInBackground();
-                return true;
+        const scopeAtStart = getApiCacheScope();
+        const itemIndex = cartItemsRef.current.findIndex((item) => toNumber(item?.id) === toNumber(cartItemId));
+        const previousItem = itemIndex >= 0 ? cartItemsRef.current[itemIndex] : null;
+        const version = beginItemMutation(cartItemId);
+        const nextQuantity = Math.max(0, toNumber(quantity));
+        const optimisticItems = [...cartItemsRef.current];
+        if (itemIndex >= 0) {
+            if (nextQuantity <= 0) {
+                optimisticItems.splice(itemIndex, 1);
+            } else {
+                optimisticItems[itemIndex] = { ...previousItem, quantity: nextQuantity };
             }
+            commitCart(optimisticItems);
+        }
 
-            await cartService.updateItem(cartItemId, { quantity });
-
-            setCartItems((previous) => {
-                const next = previous.map((item) => (
-                    toNumber(item?.id) === toNumber(cartItemId)
-                        ? { ...item, quantity: toNumber(quantity || 0) }
-                        : item
-                ));
-
-                const summary = buildSummaryFromItems(next);
-                setCartSummary(summary);
-                persistCachedCart(next, summary);
-                return next;
-            });
-
+        try {
+            if (nextQuantity <= 0) {
+                await cartService.removeItem(cartItemId);
+            } else {
+                await cartService.updateItem(cartItemId, { quantity: nextQuantity });
+            }
+            if (scopeAtStart !== getApiCacheScope()) {
+                return false;
+            }
             syncCartInBackground();
             return true;
         } catch (error) {
+            if (scopeAtStart === getApiCacheScope()) {
+                rollbackItemMutation(cartItemId, previousItem, itemIndex, version);
+            }
             throw error;
         }
     };
 
     const removeItem = async (cartItemId) => {
+        const scopeAtStart = getApiCacheScope();
+        const itemIndex = cartItemsRef.current.findIndex((item) => toNumber(item?.id) === toNumber(cartItemId));
+        const previousItem = itemIndex >= 0 ? cartItemsRef.current[itemIndex] : null;
+        const version = beginItemMutation(cartItemId);
+        if (itemIndex >= 0) {
+            const next = [...cartItemsRef.current];
+            next.splice(itemIndex, 1);
+            commitCart(next);
+        }
+
         try {
             await cartService.removeItem(cartItemId);
-
-            setCartItems((previous) => {
-                const next = previous.filter((item) => toNumber(item?.id) !== toNumber(cartItemId));
-                const summary = buildSummaryFromItems(next);
-                setCartSummary(summary);
-                persistCachedCart(next, summary);
-                return next;
-            });
-
+            if (scopeAtStart !== getApiCacheScope()) {
+                return false;
+            }
             syncCartInBackground();
             return true;
         } catch (error) {
+            if (scopeAtStart === getApiCacheScope()) {
+                rollbackItemMutation(cartItemId, previousItem, itemIndex, version);
+            }
             throw error;
         }
     };
 
     const clearCart = async () => {
+        const scopeAtStart = getApiCacheScope();
+        const snapshot = [...cartItemsRef.current];
+        const revision = ++cartRevisionRef.current;
+        commitCart([]);
         try {
             await cartService.clearCart();
-            setCartItems([]);
-            setCartSummary(buildSummaryFromItems([]));
-            clearCachedCart();
+            if (scopeAtStart !== getApiCacheScope()) {
+                return false;
+            }
+            if (cartRevisionRef.current === revision) {
+                commitCart([]);
+            }
+            syncCartInBackground();
             return true;
         } catch (error) {
+            if (scopeAtStart !== getApiCacheScope()) {
+                throw error;
+            }
+            const currentItems = cartItemsRef.current;
+            const snapshotIds = new Set(snapshot.map((item) => String(item.id)));
+            const snapshotProductIds = new Set(snapshot.map((item) => String(item.product?.id || item.product_id)));
+            const restoredItems = [
+                ...snapshot,
+                ...currentItems.filter((item) => (
+                    !snapshotIds.has(String(item.id))
+                    && !snapshotProductIds.has(String(item.product?.id || item.product_id))
+                )),
+            ];
+            if (cartRevisionRef.current === revision) {
+                commitCart(snapshot);
+            } else {
+                commitCart(restoredItems);
+                syncCartInBackground();
+            }
             throw error;
         }
     };

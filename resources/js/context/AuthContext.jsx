@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../services/authService';
+import { clearApiCacheForCurrentUser } from '../services/api';
 
 const AuthContext = createContext(undefined);
 
@@ -204,6 +205,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         setLogoutLoading(true);
+        clearApiCacheForCurrentUser();
         try {
             await Promise.race([
                 authService.logout().catch(() => null),

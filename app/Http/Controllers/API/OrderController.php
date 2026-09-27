@@ -185,7 +185,7 @@ class OrderController extends Controller
         $subtotal = 0.0;
         foreach ($cartItems as $item) {
             $product = $item->product;
-            if (!$product || !$product->is_active) {
+            if (!$product || !$product->is_active || $product->listing_status !== 'approved') {
                 return response()->json([
                     'message' => 'A product in your cart is no longer available.',
                 ], 400);
@@ -230,7 +230,7 @@ class OrderController extends Controller
 
                 foreach ($cartItems as $item) {
                     $product = $products->get((int) $item->product_id);
-                    if (!$product || !$product->is_active) {
+                    if (!$product || !$product->is_active || $product->listing_status !== 'approved') {
                         throw new HttpException(400, 'A product in your cart is no longer available.');
                     }
 

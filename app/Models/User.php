@@ -89,4 +89,14 @@ class User extends Authenticatable
         return $this->hasMany(PromoCode::class, 'assigned_user_id');
     }
 
+    public function listings()
+    {
+        return $this->hasMany(Product::class, 'seller_id');
+    }
+
+    public function activityLogs()
+    {
+        return $this->hasMany(UserActivityLog::class);
+    }
+
 }

@@ -142,6 +142,8 @@ export default function ProductEditModal({ product, onClose, onSave }) {
                 }}>
                     <h2 style={{ margin: 0, color: '#1e293b' }}>Edit Product</h2>
                     <button
+                        type="button"
+                        aria-label="Close product editor"
                         onClick={onClose}
                         disabled={submitting}
                         style={{

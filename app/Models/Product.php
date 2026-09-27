@@ -12,6 +12,7 @@ class Product extends Model
 
     protected $fillable = [
         'category_id',
+        'seller_id',
         'name',
         'slug',
         'sku',
@@ -22,6 +23,8 @@ class Product extends Model
         'vehicle_compatibility',
         'images',
         'is_active',
+        'listing_status',
+        'review_note',
         'is_hot_deal',
         'is_premium'
     ];
@@ -109,6 +112,11 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function seller()
+    {
+        return $this->belongsTo(User::class, 'seller_id');
     }
 
     public function orderItems()

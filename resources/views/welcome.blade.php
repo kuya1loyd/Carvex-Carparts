@@ -14,7 +14,8 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
         <!-- Styles -->
-        <link rel="stylesheet" href="{{ secure_asset('css/app.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+
     </head>
     <body>
         <div id="app"></div>
@@ -40,6 +41,7 @@
                 });
             })();
         </script>
-        <script src="{{ secure_asset('js/app.js') }}"></script>
+        <script src="{{ asset('js/app.js') }}"></script>
+
     </body>
 </html>

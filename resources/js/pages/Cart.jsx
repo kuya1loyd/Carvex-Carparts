@@ -2,19 +2,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import PageSkeleton from '../components/Skeleton';
 
 export default function Cart() {
     const { cartItems, cartSummary, updateItem, removeItem, loading } = useCart();
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center px-4">
-                <div className="text-center rounded-2xl border border-slate-200 bg-white/90 px-8 py-7 shadow-lg shadow-slate-900/5 backdrop-blur">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-orange-500 mx-auto mb-4"></div>
-                    <p className="text-slate-600 font-medium">Loading cart...</p>
-                </div>
-            </div>
-        );
+        return <PageSkeleton variant="list" label="Loading your cart" />;
     }
 
     return (
@@ -79,6 +73,9 @@ export default function Cart() {
                                             {/* Quantity Controls */}
                                             <div className="flex items-center gap-2 sm:gap-3">
                                                 <button
+                                                    type="button"
+                                                    aria-label={`Decrease quantity of ${item.product?.name || 'product'}`}
+                                                    data-tooltip={`Decrease quantity of ${item.product?.name || 'product'}`}
                                                     onClick={() => updateItem(item.id, Math.max(1, item.quantity - 1))}
                                                     className="rounded-xl border border-slate-200 p-1.5 sm:p-2.5 text-slate-600 transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
                                                 >
@@ -88,6 +85,9 @@ export default function Cart() {
                                                     {item.quantity}
                                                 </span>
                                                 <button
+                                                    type="button"
+                                                    aria-label={`Increase quantity of ${item.product?.name || 'product'}`}
+                                                    data-tooltip={`Increase quantity of ${item.product?.name || 'product'}`}
                                                     onClick={() => updateItem(item.id, item.quantity + 1)}
                                                     className="rounded-xl border border-slate-200 p-1.5 sm:p-2.5 text-slate-600 transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
                                                 >
@@ -102,6 +102,9 @@ export default function Cart() {
                                                 ₱{((Number(item.product?.price) || 0) * item.quantity).toFixed(2)}
                                             </p>
                                             <button
+                                                type="button"
+                                                aria-label={`Remove ${item.product?.name || 'product'} from cart`}
+                                                data-tooltip={`Remove ${item.product?.name || 'product'} from cart`}
                                                 onClick={() => removeItem(item.id)}
                                                 className="inline-flex items-center justify-center rounded-xl border border-slate-200 p-2 text-red-500 transition-colors hover:border-red-200 hover:bg-red-50"
                                             >

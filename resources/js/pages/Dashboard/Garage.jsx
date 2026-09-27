@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Car, Plus, Trash2, Search, CheckCircle2 } from 'lucide-react';
 import productService from '../../services/productService';
+import PageSkeleton from '../../components/Skeleton';
 
 const STORAGE_KEY = 'customer_garage_v1';
 
@@ -426,7 +427,7 @@ export default function DashboardGarage() {
 
                 <div style={{ marginTop: 14 }}>
                     {loadingProducts ? (
-                        <p style={{ color: '#64748b' }}>Loading compatible products...</p>
+                        <PageSkeleton variant="cards" label="Loading compatible products" />
                     ) : !activeCar ? (
                         <div style={{ padding: 18, borderRadius: 12, background: '#f8fafc', color: '#64748b' }}>Add your car first.</div>
                     ) : compatibleProducts.length === 0 ? (

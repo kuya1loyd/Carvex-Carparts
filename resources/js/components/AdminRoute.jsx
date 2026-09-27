@@ -1,12 +1,13 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import PageSkeleton from './Skeleton';
 
 export default function AdminRoute() {
     const { isAuthenticated, isAdmin, isReady } = useAuth();
 
     if (!isReady) {
-        return <div className="loading">Loading...</div>;
+        return <PageSkeleton variant="route" label="Checking administrator access" />;
     }
 
     if (!isAuthenticated) {

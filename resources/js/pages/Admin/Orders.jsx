@@ -10,6 +10,7 @@ import {
     X,
 } from 'lucide-react';
 import adminService from '../../services/adminService';
+import PageSkeleton from '../../components/Skeleton';
 
 const ORDER_STATUSES = ['processing', 'shipped', 'delivered', 'cancelled'];
 
@@ -158,16 +159,7 @@ export default function AdminOrders() {
     };
 
     if (loading) {
-        return (
-            <div className="admin-page">
-                <div className="admin-workspace">
-                    <div className="admin-loading">
-                        <div className="spinner" />
-                        <p>Loading order operations...</p>
-                    </div>
-                </div>
-            </div>
-        );
+        return <PageSkeleton variant="list" label="Loading order operations" />;
     }
 
     return (
@@ -407,7 +399,7 @@ export default function AdminOrders() {
                                 <h2>Order {selectedOrder.order_number || `#${selectedOrder.id}`}</h2>
                                 <p>{selectedOrder.created_at ? dateFormatter.format(new Date(selectedOrder.created_at)) : 'N/A'}</p>
                             </div>
-                            <button type="button" className="admin-modal__close" onClick={() => setSelectedOrder(null)}>
+                            <button type="button" className="admin-modal__close" aria-label="Close order details" onClick={() => setSelectedOrder(null)}>
                                 <X size={20} />
                             </button>
                         </div>

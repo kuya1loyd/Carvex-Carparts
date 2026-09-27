@@ -1,9 +1,17 @@
 require('./bootstrap');
 
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
+// Mount React with a safe fallback UI to avoid blank/white screen.
+import './bootstrapReact';
 
-// Create root and render the App component
-const root = ReactDOM.createRoot(document.getElementById('app'));
-root.render(React.createElement(App));
+// Surface runtime errors early in the console.
+window.addEventListener('error', (e) => {
+    // eslint-disable-next-line no-console
+    console.error('Runtime error:', e?.message || e);
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+    // eslint-disable-next-line no-console
+    console.error('Unhandled promise rejection:', e?.reason || e);
+});
+
+

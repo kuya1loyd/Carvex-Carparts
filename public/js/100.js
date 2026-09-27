@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunk=self.webpackChunk||[]).push([[100],{8100(s,e,r){r.r(e),r.d(e,{default:()=>a});r(6540);var c=r(6667),u=r(4848);function a(){return(0,u.jsxs)("div",{className:"checkout-success",children:[(0,u.jsx)("h1",{children:"Order Placed Successfully!"}),(0,u.jsx)("p",{children:"Thank you for your purchase. We'll process your order soon."}),(0,u.jsx)(c.N_,{to:"/dashboard/orders",className:"btn btn-primary",children:"View My Orders"})]})}}}]);
+//# sourceMappingURL=100.js.map

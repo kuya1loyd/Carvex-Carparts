@@ -53,6 +53,7 @@ export default function CustomerDashboardLayout() {
     const navItems = [
         { to: '/dashboard', label: 'Dashboard', icon: User, end: true },
         { to: '/dashboard/products', label: 'Products', icon: Store },
+        { to: '/dashboard/listings', label: 'My Listings', icon: Tag },
         { to: '/dashboard/orders', label: 'My Purchase', icon: Package },
         { to: '/dashboard/support', label: 'Support', icon: MessageSquare },
         { to: '/dashboard/wishlist', label: 'My Wishlist', icon: Heart },
@@ -326,6 +327,7 @@ export default function CustomerDashboardLayout() {
                     {/* Hamburger Menu Button (Mobile) */}
                     <button
                         type="button"
+                        aria-label={mobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
                         onClick={() => setMobileNavOpen(!mobileNavOpen)}
                         style={{
                             display: 'none',
@@ -393,6 +395,7 @@ export default function CustomerDashboardLayout() {
                         />
                         <button
                             type="submit"
+                            aria-label="Search dashboard products"
                             style={{
                                 background: '#ff6b35',
                                 color: 'white',
@@ -451,7 +454,10 @@ export default function CustomerDashboardLayout() {
 
                                 <div className="customer-notification-dropdown__list">
                                     {notificationLoading && notifications.length === 0 ? (
-                                        <p className="customer-notification-empty">Loading notifications...</p>
+                                        <div className="customer-notification-empty" role="status" aria-label="Loading notifications">
+                                            <span className="cv-skeleton-block" style={{ width: '70%', height: 13, marginBottom: 8 }} />
+                                            <span className="cv-skeleton-block" style={{ width: '48%', height: 11 }} />
+                                        </div>
                                     ) : notifications.length === 0 ? (
                                         <p className="customer-notification-empty">No notifications yet. Order updates, admin messages, and promo codes will appear here.</p>
                                     ) : notifications.map((notification) => (
@@ -722,6 +728,7 @@ function ProfileTrigger({ user, onClick }) {
     return (
         <button
             type="button"
+            aria-label={`Open account menu for ${user?.name || 'customer'}`}
             onClick={onClick}
             style={{
                 display: 'flex',

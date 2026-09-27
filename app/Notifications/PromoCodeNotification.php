@@ -11,9 +11,9 @@ class PromoCodeNotification extends Notification
     use Queueable;
 
     public function __construct(
-        private readonly PromoCode $promoCode,
-        private readonly ?string $customTitle = null,
-        private readonly ?string $customMessage = null,
+        private PromoCode $promoCode,
+        private ?string $customTitle = null,
+        private ?string $customMessage = null,
     ) {
     }
 

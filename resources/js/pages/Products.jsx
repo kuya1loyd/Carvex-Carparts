@@ -5,6 +5,7 @@ import { Filter, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { FALLBACK_PRODUCT_IMAGE, resolveProductImage } from '../utils/productImage';
+import PageSkeleton from '../components/Skeleton';
 
 export default function Products() {
     const { addItem } = useCart();
@@ -26,12 +27,12 @@ export default function Products() {
     const [selectedBrand, setSelectedBrand] = useState('');
 
     const fallbackProducts = [
-        { id: 1, name: 'Coolant Radiator Fluid', price: 94.95, category: 'Engine Parts', brand: 'Peak', stock: 15, sku: 'CRF-001' },
-        { id: 2, name: 'Serpentine Belt', price: 229.95, category: 'Engine Parts', brand: 'Gates', stock: 8, sku: 'SB-002' },
-        { id: 3, name: 'Shock Absorber', price: 750, category: 'Suspension', brand: 'KYB', stock: 12, sku: 'SA-003' },
-        { id: 4, name: 'Brake Rotor', price: 299.99, category: 'Brake Systems', brand: 'Brembo', stock: 20, sku: 'BR-004' },
-        { id: 5, name: 'Air Filter', price: 145.50, category: 'Engine Parts', brand: 'Bosch', stock: 0, sku: 'AF-005' },
-        { id: 6, name: 'Spark Plugs', price: 89.99, category: 'Engine Parts', brand: 'NGK', stock: 25, sku: 'SP-006' },
+        { id: 1, name: 'Coolant Radiator Fluid', price: 94.95, category: 'Engine Parts', brand: 'Peak', stock: 15, sku: 'CRF-001', images: ['/images/Coolant Radiator Fluid.jpg'] },
+        { id: 2, name: 'Serpentine Belt', price: 229.95, category: 'Engine Parts', brand: 'Gates', stock: 8, sku: 'SB-002', images: ['/images/Serpentine Belt.jpg'] },
+        { id: 3, name: 'Shock Absorber', price: 750, category: 'Suspension', brand: 'KYB', stock: 12, sku: 'SA-003', images: ['/images/Shock Absorber.jpg'] },
+        { id: 4, name: 'Brake Rotor', price: 299.99, category: 'Brake Systems', brand: 'Brembo', stock: 20, sku: 'BR-004', images: ['/images/Brake Rotor (Disc).jpg'] },
+        { id: 5, name: 'Air Filter', price: 145.50, category: 'Engine Parts', brand: 'Bosch', stock: 0, sku: 'AF-005', images: ['/images/Air Filter.jpg'] },
+        { id: 6, name: 'Spark Plugs', price: 89.99, category: 'Engine Parts', brand: 'NGK', stock: 25, sku: 'SP-006', images: ['/images/Spar plus.jpg'] },
     ];
 
     const parsePrice = (value) => {
@@ -193,14 +194,7 @@ export default function Products() {
 
     if (loading) {
         return (
-            <div style={{ minHeight: '100vh', paddingTop: 120, display: 'grid', placeItems: 'center', background: 'linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)' }}>
-                <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.82)', border: '1px solid #e2e8f0', borderRadius: 18, padding: '26px 30px', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)' }}>
-                    <div style={{ width: 42, height: 42, border: '4px solid #e5e7eb', borderTopColor: '#f97316', borderRadius: '999px', margin: '0 auto 14px' }} />
-                    <div style={{ fontSize: 14, color: '#64748b', fontWeight: 600, letterSpacing: '0.01em' }}>
-                        Loading products...
-                    </div>
-                </div>
-            </div>
+            <PageSkeleton variant="cards" label="Loading products" />
         );
     }
 

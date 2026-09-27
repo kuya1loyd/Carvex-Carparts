@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import Checkout from '../Checkout';
+import PageSkeleton from '../../components/Skeleton';
 
 const currencyFormatter = new Intl.NumberFormat('en-PH', {
     style: 'currency',
@@ -34,11 +35,7 @@ export default function DashboardCart() {
     }, [showCheckoutModal]);
 
     if (loading) {
-        return (
-            <section style={{ border: '1px solid #dbe1ea', borderRadius: 14, background: '#ffffff', padding: 20, color: '#0f172a' }}>
-                <p style={{ margin: 0, color: '#64748b', fontWeight: 700 }}>Loading cart...</p>
-            </section>
-        );
+        return <PageSkeleton variant="list" label="Loading your cart" />;
     }
 
     if (cartItems.length === 0 && !showCheckoutModal) {
@@ -102,11 +99,11 @@ export default function DashboardCart() {
                                         <h4 style={{ margin: 0, fontSize: 15, color: '#0f172a', fontWeight: 800 }}>{item.product?.name}</h4>
                                         <p style={{ margin: '4px 0 8px', color: '#64748b', fontSize: 13 }}>{formatCurrency(item.product?.price)} each</p>
                                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #e2e8f0', borderRadius: 10, padding: '5px 8px', background: '#f8fafc' }}>
-                                            <button type="button" onClick={() => updateItem(item.id, Math.max(1, item.quantity - 1))} style={{ border: 0, background: 'transparent', color: '#475569', cursor: 'pointer' }}>
+                                            <button type="button" aria-label={`Decrease quantity of ${item.product?.name || 'product'}`} data-tooltip={`Decrease quantity of ${item.product?.name || 'product'}`} onClick={() => updateItem(item.id, Math.max(1, item.quantity - 1))} style={{ border: 0, background: 'transparent', color: '#475569', cursor: 'pointer' }}>
                                                 <Minus size={15} />
                                             </button>
                                             <span style={{ minWidth: 20, textAlign: 'center', fontWeight: 800, color: '#0f172a' }}>{item.quantity}</span>
-                                            <button type="button" onClick={() => updateItem(item.id, item.quantity + 1)} style={{ border: 0, background: 'transparent', color: '#475569', cursor: 'pointer' }}>
+                                            <button type="button" aria-label={`Increase quantity of ${item.product?.name || 'product'}`} data-tooltip={`Increase quantity of ${item.product?.name || 'product'}`} onClick={() => updateItem(item.id, item.quantity + 1)} style={{ border: 0, background: 'transparent', color: '#475569', cursor: 'pointer' }}>
                                                 <Plus size={15} />
                                             </button>
                                         </div>
@@ -114,7 +111,7 @@ export default function DashboardCart() {
 
                                     <div style={{ textAlign: 'right' }}>
                                         <p style={{ margin: 0, fontWeight: 900, color: '#0f172a' }}>{formatCurrency(Number(item.product?.price || 0) * Number(item.quantity || 0))}</p>
-                                        <button type="button" onClick={() => removeItem(item.id)} style={{ marginTop: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c', borderRadius: 8, padding: 6, cursor: 'pointer' }}>
+                                        <button type="button" aria-label={`Remove ${item.product?.name || 'product'} from cart`} data-tooltip={`Remove ${item.product?.name || 'product'} from cart`} onClick={() => removeItem(item.id)} style={{ marginTop: 8, border: '1px solid #fecaca', background: '#fef2f2', color: '#b91c1c', borderRadius: 8, padding: 6, cursor: 'pointer' }}>
                                             <Trash2 size={14} />
                                         </button>
                                     </div>

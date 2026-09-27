@@ -80,10 +80,65 @@ class SeedProducts extends Command
         $successCount = 0;
         $failCount = 0;
 
+        $imageMap = [
+            'oil-filter' => 'oil filter.jpg',
+            'air-filter' => 'Air Filter.jpg',
+            'spark-plugs' => 'Spar plus.jpg',
+            'cabin-air-filter' => 'Cabin Air Filter.jpg',
+            'pcv-valve' => 'PCV Valve.jpg',
+            'fuel-filter' => 'Fuel Filter.jpg',
+            'engine-oil-synthetic' => 'Engine Oil (Synthetic).jpg',
+            'transmission-fluid' => 'Transmission Fluid.jpg',
+            'coolant-fluid' => 'Coolant Radiator Fluid.jpg',
+            'serpentine-belt' => 'Serpentine Belt.jpg',
+            'brake-pads' => 'Brake pads.jpg',
+            'brake-fluid' => 'Brake Fluid.jpg',
+            'brake-rotor' => 'Brake Rotor (Disc).jpg',
+            'ceramic-brake-pads-front' => 'Ceramic Brake Pads (Front).jpg',
+            'brake-caliper-front' => 'Brake Caliper (Front).jpg',
+            'brake-master-cylinder' => 'Brake Master Cylinder.jpg',
+            'abs-sensor' => 'ABS Sensor.jpg',
+            'brake-pads-rear' => 'Brake Pads (Rear).jpg',
+            'brake-hose' => 'Brake Hose Assembly.jpg',
+            'brake-drum' => 'Brake Drum.jpg',
+            'shock-absorber' => 'Shock Absorber.jpg',
+            'suspension-spring' => 'Suspension Spring.jpg',
+            'control-arm' => 'Control Arm.jpg',
+            'ball-joint' => 'Ball Joint.jpg',
+            'tie-rod-end' => 'Tie Rod End.jpg',
+            'sway-bar-link' => 'Sway Bar Link.jpg',
+            'strut-assembly' => 'Strut Assembly.jpg',
+            'coil-spring' => 'Coil Spring.jpg',
+            'leaf-spring' => 'Leaf Spring.jpg',
+            'stabilizer-bar' => 'Stabilizer Bar.jpg',
+            'alternator' => 'Alternator.jpg',
+            'car-battery' => 'Car Battery.jpg',
+            'starter-motor' => 'Starter Motor.jpg',
+            'voltage-regulator' => 'Voltage Regulator.jpg',
+            'led-headlight-bulbs' => 'LED Headlight Bulbs.jpg',
+            'tail-light-bulb' => 'Tail Light Bulb.jpg',
+            'wiper-blade' => 'Wiper Blade Assembly.jpg',
+            'ecu-module' => 'ECU Control Module.jpg',
+            'battery-cable' => 'Battery Cable.jpg',
+            'fuse-box' => 'Fuse Box.jpg',
+            'floor-mats' => 'Floor Mats.jpg',
+            'car-seat-cover' => 'Car Seat Cover.jpg',
+            'steering-wheel-cover' => 'Steering Wheel Cover.jpg',
+            'car-rear-spoiler' => 'Car Rear Spoiler.jpg',
+            'roof-rack' => 'Roof Rack.jpg',
+            'led-dome-light' => 'LED Interior Dome Light.jpg',
+            'mud-flaps' => 'Mud Flaps.jpg',
+            'car-air-freshener' => 'Car Air Freshener.jpg',
+            'door-lock-protector' => 'Door Lock Protector.jpg',
+            'bumper-protector' => 'Bumper Protector.jpg',
+        ];
+
         foreach ($products as $index => $product) {
+            $image = $imageMap[$product['slug']] ?? null;
+
             $payload = array_merge($product, [
                 'is_active' => (bool) ($product['is_active'] ?? true),
-                'images' => [],
+                'images' => $image ? ['/images/' . $image] : [],
             ]);
 
             try {

@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { ChevronLeft, ShoppingCart, Heart, Share2, CheckCircle, AlertCircle } from 'lucide-react';
 import { FALLBACK_PRODUCT_IMAGE, resolveProductImage } from '../utils/productImage';
+import PageSkeleton from '../components/Skeleton';
 
 const currencyFormatter = new Intl.NumberFormat('en-PH', {
     style: 'currency',
@@ -81,14 +82,7 @@ export default function ProductDetail() {
     };
 
     if (loading) {
-        return (
-            <div className="product-detail-page loading-state">
-                <div className="state-card">
-                    <div className="state-spinner" />
-                    <p className="state-copy">Loading product details...</p>
-                </div>
-            </div>
-        );
+        return <PageSkeleton variant="detail" label="Loading product details" />;
     }
 
     if (error || !product) {

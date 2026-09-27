@@ -23,7 +23,7 @@ export default function Home() {
     }, []);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
+<div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
             {/* Hero Section */}
             <section className="relative min-h-screen flex items-center justify-center overflow-hidden py-12">
                 <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-amber-500/10" />
@@ -36,14 +36,14 @@ export default function Home() {
                 </div>
                 
                 <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 text-center">
-                    <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 leading-tight animate-fade-in">
+<h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white mb-4 sm:mb-6 leading-tight animate-fade-in reveal reveal-up" data-reveal>
                         Upgrade Your Ride
                     </h1>
-                    <p className="text-lg sm:text-xl text-slate-300 mb-8 sm:mb-12 max-w-2xl mx-auto animate-fade-in delay-200">
+<p className="text-lg sm:text-xl text-slate-300 mb-8 sm:mb-12 max-w-2xl mx-auto animate-fade-in delay-200 reveal reveal-fade" data-reveal>
                         Premium auto parts and accessories for every vehicle. Choose quality, choose performance, choose CarVex.
                     </p>
                     
-                    <div className="flex gap-3 sm:gap-4 justify-center flex-wrap animate-fade-in delay-400">
+<div className="flex gap-3 sm:gap-4 justify-center flex-wrap animate-fade-in delay-400 reveal reveal-zoom" data-reveal>
                         <Link
                             to="/products"
                             className="px-6 sm:px-8 py-3 sm:py-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-orange-500/50"
@@ -64,7 +64,7 @@ export default function Home() {
 
             {/* Stats Section */}
             <section className="py-12 sm:py-20 px-4 sm:px-6">
-                <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8 sm:gap-12">
+<div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8 sm:gap-12 reveal reveal-up" data-reveal>
                     <div className="text-center">
                         <PackageOpen className="w-12 sm:w-16 h-12 sm:h-16 text-orange-500 mx-auto mb-3 sm:mb-4" />
                         <h3 className="text-3xl sm:text-4xl font-bold text-white mb-2">10K+</h3>

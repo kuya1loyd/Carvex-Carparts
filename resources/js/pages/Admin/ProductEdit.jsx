@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import { ChevronLeft } from 'lucide-react';
+import PageSkeleton from '../../components/Skeleton';
 
 export default function AdminProductEdit() {
     const navigate = useNavigate();
@@ -138,7 +139,7 @@ export default function AdminProductEdit() {
         return (
             <div className="admin-page">
                 <div className="admin-dashboard-modern">
-                    <div className="loading">Loading...</div>
+                    <PageSkeleton variant="dashboard" label="Loading product editor" />
                 </div>
             </div>
         );

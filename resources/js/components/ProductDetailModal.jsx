@@ -86,6 +86,8 @@ export default function ProductDetailModal({ product, onClose }) {
                 }}>
                     <h2 style={{ margin: 0, color: '#1e293b' }}>{product.name}</h2>
                     <button
+                        type="button"
+                        aria-label="Close product details"
                         onClick={onClose}
                         style={{
                             all: 'unset',

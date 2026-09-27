@@ -75,6 +75,7 @@ class PromoCodeController extends Controller
             $products = Product::query()
                 ->whereIn('id', $productIds)
                 ->where('is_active', true)
+                ->where('listing_status', 'approved')
                 ->get()
                 ->keyBy('id');
 
@@ -101,7 +102,7 @@ class PromoCodeController extends Controller
             $product = $item['product'] ?? $item->product ?? null;
             $quantity = (int) ($item['quantity'] ?? $item->quantity ?? 0);
 
-            if (!$product || !$product->is_active || $quantity <= 0) {
+            if (!$product || !$product->is_active || $product->listing_status !== 'approved' || $quantity <= 0) {
                 continue;
             }
 

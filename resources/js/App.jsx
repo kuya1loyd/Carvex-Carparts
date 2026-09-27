@@ -4,6 +4,8 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { useAuth } from './context/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import PageSkeleton from './components/Skeleton';
+import IconTooltips from './components/IconTooltips';
 import Layout from './components/Layout';
 import AdminRoute from './components/AdminRoute';
 import CustomerRoute from './components/CustomerRoute';
@@ -42,6 +44,7 @@ const DashboardCart = lazy(() => import('./pages/Dashboard/Cart'));
 const DashboardSupport = lazy(() => import('./pages/Dashboard/Support'));
 const DashboardWishlist = lazy(() => import('./pages/Dashboard/Wishlist'));
 const DashboardWallet = lazy(() => import('./pages/Dashboard/Wallet'));
+const DashboardListings = lazy(() => import('./pages/Dashboard/Listings'));
 const DashboardAddresses = lazy(() => import('./pages/Dashboard/Addresses'));
 const DashboardCheckout = lazy(() => import('./pages/Dashboard/Checkout'));
 const DashboardCheckoutSuccess = lazy(() => import('./pages/Dashboard/CheckoutSuccess'));
@@ -54,10 +57,11 @@ const AdminProductEdit = lazy(() => import('./pages/Admin/ProductEdit'));
 const AdminOrders = lazy(loadAdminOrders);
 const AdminUsers = lazy(loadAdminUsers);
 const AdminConcerns = lazy(loadAdminConcerns);
+const AdminActivity = lazy(() => import('./pages/Admin/Activity'));
 const AdminOrderDetail = lazy(() => import('./pages/Admin/OrderDetail'));
 
 function RouteLoader() {
-    return null;
+    return <PageSkeleton variant="route" label="Loading page" />;
 }
 
 function GuestOnly({ children }) {
@@ -115,6 +119,7 @@ export default function App() {
             <Router>
                 <AuthProvider>
                     <CartProvider>
+                    <IconTooltips />
                     <Suspense fallback={<RouteLoader />}>
                     <Routes>
                         {/* Public Routes */}
@@ -160,6 +165,7 @@ export default function App() {
                                 <Route path="/dashboard/garage" element={<Navigate to="/dashboard/products" replace />} />
                                 <Route path="/dashboard/wishlist" element={<DashboardWishlist />} />
                                 <Route path="/dashboard/wallet" element={<DashboardWallet />} />
+                                <Route path="/dashboard/listings" element={<DashboardListings />} />
                                 <Route path="/dashboard/addresses" element={<DashboardAddresses />} />
                                 <Route path="/dashboard/cart" element={<DashboardCart />} />
                                 <Route path="/dashboard/checkout" element={<DashboardCheckout />} />
@@ -182,6 +188,7 @@ export default function App() {
                                 <Route path="/admin/orders" element={<AdminOrders />} />
                                 <Route path="/admin/orders/:id" element={<AdminOrderDetail />} />
                                 <Route path="/admin/users" element={<AdminUsers />} />
+                                <Route path="/admin/activity" element={<AdminActivity />} />
                                 <Route path="/admin/customer-service" element={<AdminConcerns />} />
                                 <Route path="/admin/concerns" element={<Navigate to="/admin/customer-service" replace />} />
                             </Route>

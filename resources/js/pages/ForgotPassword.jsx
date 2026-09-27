@@ -94,12 +94,7 @@ export default function ForgotPassword() {
                                 className="btn btn-primary btn-block" 
                                 disabled={loading || success}
                             >
-                                {loading ? (
-                                    <>
-                                        <span className="auth-inline-spinner"></span>
-                                        Sending...
-                                    </>
-                                ) : success ? 'Email Sent' : 'Send Reset Link'}
+                                {loading ? 'Sending...' : success ? 'Email Sent' : 'Send Reset Link'}
                             </button>
                         </form>
                         <div className="auth-footer">

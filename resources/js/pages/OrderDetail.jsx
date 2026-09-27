@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import adminService from '../services/adminService';
 import orderService from '../services/orderService';
+import PageSkeleton from '../components/Skeleton';
 import { CheckCircle2, PackageSearch, Truck, Home, Clock3, CircleDashed, Navigation, Map as MapIcon, ChevronLeft, MapPin } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -117,7 +118,7 @@ export default function OrderDetail() {
     const timeline = useMemo(() => buildTimeline(order), [order]);
 
     if (loading) {
-        return <div className="loading">Loading order...</div>;
+        return <PageSkeleton variant="detail" label="Loading order details" />;
     }
 
     if (error) {

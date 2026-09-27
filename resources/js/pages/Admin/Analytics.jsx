@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import adminService from '../../services/adminService';
-import { TrendingUp, ShoppingCart, Package, Users, DollarSign, BarChart3, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, ShoppingCart, Package, Users, DollarSign, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import PageSkeleton from '../../components/Skeleton';
 
 export default function AdminAnalytics() {
     const [stats, setStats] = useState(null);
@@ -23,16 +24,7 @@ export default function AdminAnalytics() {
     const formatMoney = (value) => `₱${Number(value || 0).toFixed(0)}`;
 
     if (loading) {
-        return (
-            <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '24px' }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#64748b' }}>
-                        <BarChart3 size={20} />
-                        <span>Loading analytics...</span>
-                    </div>
-                </div>
-            </div>
-        );
+        return <PageSkeleton variant="dashboard" label="Loading sales analytics" />;
     }
 
     return (
@@ -254,10 +246,15 @@ export default function AdminAnalytics() {
                             border: '1px dashed #e2e8f0',
                             color: '#94a3b8'
                         }}>
-                            <div style={{ textAlign: 'center' }}>
-                                <BarChart3 size={48} color="#cbd5e1" style={{ marginBottom: '12px' }} />
-                                <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>Revenue chart visualization</p>
-                                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>Chart data loading...</p>
+                            <div className="cv-skeleton-chart" role="status" aria-label="Loading revenue chart">
+                                {[42, 68, 52, 88, 62, 76, 47, 94].map((height, index) => (
+                                    <span
+                                        className="cv-skeleton-block"
+                                        key={index}
+                                        style={{ height: `${height}%` }}
+                                        aria-hidden="true"
+                                    />
+                                ))}
                             </div>
                         </div>
                     </div>

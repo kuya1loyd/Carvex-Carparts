@@ -10,7 +10,7 @@ class OrderPlacedNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly Order $order)
+    public function __construct(private Order $order)
     {
     }
 

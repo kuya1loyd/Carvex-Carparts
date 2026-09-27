@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import orderService from '../services/orderService';
+import PageSkeleton from '../components/Skeleton';
 
 export default function Orders() {
     const [orders, setOrders] = useState([]);
@@ -21,7 +22,7 @@ export default function Orders() {
     }, []);
 
     if (loading) {
-        return <div className="loading">Loading orders...</div>;
+        return <PageSkeleton variant="list" label="Loading your orders" />;
     }
 
     return (

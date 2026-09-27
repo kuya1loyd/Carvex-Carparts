@@ -658,6 +658,8 @@ function PaymentModal({ paymentMethod, onClose, onSubmit, gcashName, setGcashNam
                         {paymentMethod === 'gcash' ? 'GCash Payment Details' : 'Credit Card Payment Details'}
                     </h2>
                     <button
+                        type="button"
+                        aria-label="Close payment details"
                         onClick={onClose}
                         style={{
                             background: 'none',

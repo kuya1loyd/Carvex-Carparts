@@ -50,14 +50,14 @@ export default function Overview() {
             </div>
 
             {/* Stats Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+            <div aria-busy={loading} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                 <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div>
                             <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 Total Orders
                             </p>
-                            <h3 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 900, color: '#0f172a' }}>{loading ? '...' : stats.totalOrders}</h3>
+                            <h3 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 900, color: '#0f172a' }}>{loading ? <span className="cv-skeleton-block cv-skeleton-stat" aria-hidden="true" /> : stats.totalOrders}</h3>
                         </div>
                         <Package size={32} color="#f97316" opacity={0.2} />
                     </div>
@@ -68,7 +68,7 @@ export default function Overview() {
                             <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 Total Spent
                             </p>
-                            <h3 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 900, color: '#0f172a' }}>{loading ? '...' : `₱${stats.totalSpent.toFixed(2)}`}</h3>
+                            <h3 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 900, color: '#0f172a' }}>{loading ? <span className="cv-skeleton-block cv-skeleton-stat" aria-hidden="true" /> : `₱${stats.totalSpent.toFixed(2)}`}</h3>
                         </div>
                         <ShoppingBag size={32} color="#f97316" opacity={0.2} />
                     </div>
@@ -79,7 +79,7 @@ export default function Overview() {
                             <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 Cart Items
                             </p>
-                            <h3 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 900, color: '#0f172a' }}>{loading ? '...' : stats.cartItems}</h3>
+                            <h3 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 900, color: '#0f172a' }}>{loading ? <span className="cv-skeleton-block cv-skeleton-stat" aria-hidden="true" /> : stats.cartItems}</h3>
                         </div>
                         <ShoppingBag size={32} color="#f97316" opacity={0.2} />
                     </div>

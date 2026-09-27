@@ -14,7 +14,7 @@ export const cartService = {
         api.post('/cart/add', data, withCartConfig(config, { skipAuthRedirect: true, timeout: 6000 })),
 
     updateItem: (cartItemId, data, config) =>
-        api.put(`/cart/${cartItemId}`, data, withCartConfig(config, { skipAuthRedirect: true })),
+        api.patch(`/cart/${cartItemId}`, data, withCartConfig(config, { skipAuthRedirect: true })),
 
     removeItem: (cartItemId, config) =>
         api.delete(`/cart/${cartItemId}`, withCartConfig(config, { skipAuthRedirect: true })),

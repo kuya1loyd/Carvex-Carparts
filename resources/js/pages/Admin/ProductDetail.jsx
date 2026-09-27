@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import adminService from '../../services/adminService';
 import { ChevronLeft, Package } from 'lucide-react';
+import PageSkeleton from '../../components/Skeleton';
 
 export default function AdminProductDetail() {
     const { id } = useParams();
@@ -80,7 +81,7 @@ export default function AdminProductDetail() {
         return (
             <div className="admin-page">
                 <div className="admin-dashboard-modern">
-                    <div className="loading">Loading product...</div>
+                    <PageSkeleton variant="detail" label="Loading product details" />
                 </div>
             </div>
         );

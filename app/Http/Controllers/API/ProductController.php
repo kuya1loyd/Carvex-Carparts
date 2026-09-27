@@ -12,6 +12,7 @@ class ProductController extends Controller
     private function transformProduct(Product $product): array
     {
         $payload = $product->toArray();
+        unset($payload['seller_id'], $payload['listing_status'], $payload['review_note']);
         $payload['in_stock'] = (int) $product->stock > 0;
         $payload['low_stock'] = (int) $product->stock > 0 && (int) $product->stock <= 5;
 
@@ -23,7 +24,7 @@ class ProductController extends Controller
         $query = Product::query()->with('category');
 
         if ($activeOnly) {
-            $query->where('is_active', true);
+            $query->where('is_active', true)->where('listing_status', 'approved');
         }
 
         if ($search = trim((string) $request->input('search', ''))) {
@@ -92,6 +93,7 @@ class ProductController extends Controller
     {
         $products = Product::with('category')
             ->where('is_active', true)
+            ->where('listing_status', 'approved')
             ->latest()
             ->limit(12)
             ->get()
@@ -110,6 +112,7 @@ class ProductController extends Controller
     {
         $products = Product::with('category')
             ->where('is_active', true)
+            ->where('listing_status', 'approved')
             ->where('is_hot_deal', true)
             ->latest()
             ->limit(12)
@@ -129,6 +132,7 @@ class ProductController extends Controller
     {
         $products = Product::with('category')
             ->where('is_active', true)
+            ->where('listing_status', 'approved')
             ->where('is_premium', true)
             ->latest()
             ->limit(12)
@@ -152,6 +156,7 @@ class ProductController extends Controller
                     ->orWhere('slug', (string) $id);
             })
             ->where('is_active', true)
+            ->where('listing_status', 'approved')
             ->first();
 
         if (!$product) {
@@ -175,6 +180,7 @@ class ProductController extends Controller
         $products = Product::with('category')
             ->where('category_id', $category->id)
             ->where('is_active', true)
+            ->where('listing_status', 'approved')
             ->latest()
             ->paginate($perPage);
 
@@ -201,7 +207,7 @@ class ProductController extends Controller
         $product = Product::where(function ($query) use ($id) {
             $query->where('id', $id)
                 ->orWhere('slug', (string) $id);
-        })->where('is_active', true)->first();
+        })->where('is_active', true)->where('listing_status', 'approved')->first();
 
         if (!$product) {
             return response()->json(['message' => 'Product not found'], 404);

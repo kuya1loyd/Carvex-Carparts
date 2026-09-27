@@ -1,7 +1,7 @@
 import api from './api';
 
 export const authService = {
-    register: (data) => api.post('/auth/register', data),
+    register: (data, config) => api.post('/auth/register', data, { timeout: 20000, ...config }),
     
     login: (data, config) => 
         api.post('/auth/login', data, { timeout: 12000, ...config }),

@@ -4,6 +4,12 @@ const adminService = {
     getStats: (config) =>
         api.get('/admin/stats', { timeout: 12000, ...config }),
 
+    getActivity: (params, config) =>
+        api.get('/admin/activity', { params, timeout: 12000, ...config }),
+
+    reviewSellerProduct: (id, data, config) =>
+        api.patch(`/admin/products/${id}/review`, data, { timeout: 12000, ...config }),
+
     getUsers: (config) =>
         api.get('/admin/users', { timeout: 12000, ...config }),
 

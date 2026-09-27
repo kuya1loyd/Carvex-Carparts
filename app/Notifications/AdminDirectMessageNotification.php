@@ -11,9 +11,9 @@ class AdminDirectMessageNotification extends Notification
     use Queueable;
 
     public function __construct(
-        private readonly string $title,
-        private readonly string $message,
-        private readonly string $link = '/dashboard'
+        private string $title,
+        private string $message,
+        private string $link = '/dashboard'
     ) {
     }
 

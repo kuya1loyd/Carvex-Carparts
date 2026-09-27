@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Clock3, LifeBuoy, MessageSquare, RefreshCw, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import supportService from '../../services/supportService';
+import PageSkeleton from '../../components/Skeleton';
 
 const STATUS_META = {
     pending: {
@@ -312,9 +313,7 @@ export default function DashboardSupport() {
 
                         <div style={{ marginTop: '14px', display: 'grid', gap: '10px', maxHeight: '520px', overflowY: 'auto', paddingRight: '4px' }}>
                             {loading ? (
-                                <div style={{ borderRadius: '14px', border: '1px dashed #cbd5e1', background: '#f8fafc', padding: '18px', color: '#64748b', fontWeight: 700 }}>
-                                    Loading your support inbox...
-                                </div>
+                                <PageSkeleton variant="list" label="Loading your support inbox" />
                             ) : concerns.length === 0 ? (
                                 <div style={{ borderRadius: '14px', border: '1px dashed #cbd5e1', background: '#f8fafc', padding: '18px', color: '#64748b', lineHeight: 1.6 }}>
                                     You have not opened any tickets yet. Send your first concern above and the admin will be able to reply here.

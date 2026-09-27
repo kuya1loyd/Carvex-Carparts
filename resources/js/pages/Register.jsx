@@ -76,8 +76,8 @@ export default function Register() {
         
         if (!formData.password) {
             errors.password = 'Password is required';
-        } else if (formData.password.length < 6) {
-            errors.password = 'Password must be at least 6 characters';
+        } else if (formData.password.length < 8) {
+            errors.password = 'Password must be at least 8 characters';
         }
         
         if (formData.password !== formData.passwordConfirmation) {
@@ -116,9 +116,13 @@ export default function Register() {
                 navigate('/login');
             }, 2000);
         } catch (err) {
-            const errorMsg = err.response?.data?.message || 
-                           err.response?.data?.error ||
-                           'Registration failed. Please try again.';
+            const validationMessage = Object.values(err.response?.data?.errors || {}).flat()[0];
+            const errorMsg = err.response?.data?.message
+                || err.response?.data?.error
+                || validationMessage
+                || (!err.response
+                    ? 'Could not reach the signup service. Check that the server is running and try again.'
+                    : 'We could not create your account right now. Please try again shortly.');
             setGeneralError(errorMsg);
         } finally {
             setLoading(false);
@@ -219,12 +223,7 @@ export default function Register() {
                             aria-busy={googleLoading}
                         >
                             {googleLoading ? (
-                                <>
-                                    <span className="button-spinner" role="status">
-                                        <span className="visually-hidden">Loading...</span>
-                                    </span>
-                                    <span>Connecting to Google...</span>
-                                </>
+                                <span role="status">Connecting to Google...</span>
                             ) : (
                                 <>
                                     <svg className="google-icon" viewBox="0 0 24 24" width="20" height="20">
@@ -488,16 +487,7 @@ export default function Register() {
                                 disabled={loading || googleLoading}
                                 aria-busy={loading}
                             >
-                                {loading ? (
-                                    <>
-                                        <span className="button-spinner" role="status">
-                                            <span className="visually-hidden">Loading...</span>
-                                        </span>
-                                        <span>Creating account...</span>
-                                    </>
-                                ) : (
-                                    'Create Account'
-                                )}
+                                {loading ? 'Creating account...' : 'Create Account'}
                             </button>
                         </form>
 

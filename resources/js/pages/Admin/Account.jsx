@@ -460,6 +460,7 @@ export default function AdminAccount() {
                                 />
                                 <button
                                     type="button"
+                                    aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
                                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                                     style={{
                                         position: 'absolute',
@@ -505,6 +506,7 @@ export default function AdminAccount() {
                                     />
                                     <button
                                         type="button"
+                                        aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
                                         onClick={() => setShowNewPassword(!showNewPassword)}
                                         style={{
                                             position: 'absolute',
@@ -548,6 +550,7 @@ export default function AdminAccount() {
                                     />
                                     <button
                                         type="button"
+                                        aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}
                                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                         style={{
                                             position: 'absolute',

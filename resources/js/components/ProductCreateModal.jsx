@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import adminService from '../services/adminService';
 import { X, Upload, XCircle } from 'lucide-react';
+import PageSkeleton from './Skeleton';
 
 export default function ProductCreateModal({ isOpen, onClose, onSuccess }) {
     const [categories, setCategories] = useState([]);
@@ -214,6 +215,8 @@ export default function ProductCreateModal({ isOpen, onClose, onSuccess }) {
                         </p>
                     </div>
                     <button
+                        type="button"
+                        aria-label="Close product creation form"
                         onClick={handleClose}
                         disabled={submitting}
                         style={{
@@ -249,9 +252,7 @@ export default function ProductCreateModal({ isOpen, onClose, onSuccess }) {
                     )}
 
                     {loading ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                            Loading...
-                        </div>
+                        <PageSkeleton variant="list" label="Loading product categories" />
                     ) : (
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {/* Product Name */}

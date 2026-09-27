@@ -97,6 +97,17 @@ img {
     border-style: none;
 }
 
+// Mobile overflow safety (helps with “not fit” issues)
+html, body {
+    overflow-x: hidden;
+    width: 100%;
+}
+
+* {
+    min-width: 0;
+}
+
+
 button, input, optgroup, select, textarea {
     font-family: inherit;
     font-size: 100%;

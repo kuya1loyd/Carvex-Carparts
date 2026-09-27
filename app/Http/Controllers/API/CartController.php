@@ -31,7 +31,7 @@ class CartController extends Controller
         $payload['unit_price'] = (float) ($product->price ?? 0);
         $payload['subtotal'] = round($payload['unit_price'] * (int) ($item->quantity ?? 0), 2);
         $payload['available_stock'] = (int) ($product->stock ?? 0);
-        $payload['is_available'] = (bool) ($product && $product->is_active && $product->stock > 0);
+        $payload['is_available'] = (bool) ($product && $product->is_active && $product->listing_status === 'approved' && $product->stock > 0);
 
         return $payload;
     }
@@ -134,7 +134,7 @@ class CartController extends Controller
         ]);
 
         $product = Product::find((int) $validated['product_id']);
-        if (!$product || !$product->is_active) {
+        if (!$product || !$product->is_active || $product->listing_status !== 'approved') {
             return response()->json(['message' => 'Product not found'], 404);
         }
 
@@ -200,7 +200,7 @@ class CartController extends Controller
         }
 
         $product = $item->product;
-        if (!$product || !$product->is_active) {
+        if (!$product || !$product->is_active || $product->listing_status !== 'approved') {
             return response()->json(['message' => 'Product not found'], 404);
         }
 

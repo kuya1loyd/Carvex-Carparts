@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import adminService from '../../services/adminService';
+import PageSkeleton from '../../components/Skeleton';
 
 const ORDER_STATUSES = ['processing', 'shipped', 'delivered', 'cancelled'];
 
@@ -83,7 +84,7 @@ export default function AdminOrderDetail() {
         return (
             <div className="admin-page">
                 <div className="admin-dashboard-modern">
-                    <div className="loading">Loading order details...</div>
+                    <PageSkeleton variant="detail" label="Loading order details" />
                 </div>
             </div>
         );

@@ -10,6 +10,7 @@ use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\CustomerConcernController;
 use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\PromoCodeController;
+use App\Http\Controllers\API\SellerListingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +46,10 @@ Route::middleware('local.auth')->group(function () {
     Route::patch('/notifications/{notificationId}/read', [NotificationController::class, 'markRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
     Route::post('/promo-codes/validate', [PromoCodeController::class, 'validateForCheckout']);
+    Route::get('/seller/listings', [SellerListingController::class, 'index']);
+    Route::post('/seller/listings', [SellerListingController::class, 'store']);
+    Route::patch('/seller/listings/{id}', [SellerListingController::class, 'update']);
+    Route::delete('/seller/listings/{id}', [SellerListingController::class, 'destroy']);
 });
 
 // Product Routes (Public)
@@ -84,6 +89,7 @@ Route::middleware('local.auth')->group(function () {
 Route::middleware(['local.auth', 'admin'])->group(function () {
     // Dashboard
     Route::get('/admin/stats', [AdminController::class, 'stats']);
+    Route::get('/admin/activity', [AdminController::class, 'activity']);
     
     // Admin Profile
     Route::post('/admin/profile', [AdminController::class, 'updateProfile']);
@@ -99,6 +105,7 @@ Route::middleware(['local.auth', 'admin'])->group(function () {
     Route::get('/admin/products', [AdminController::class, 'products']);
     Route::post('/admin/products', [AdminController::class, 'createProduct']);
     Route::patch('/admin/products/{id}', [AdminController::class, 'updateProduct']);
+    Route::patch('/admin/products/{id}/review', [AdminController::class, 'reviewSellerListing']);
     Route::delete('/admin/products/{id}', [AdminController::class, 'deleteProduct']);
     Route::patch('/admin/products/{id}/deal-status', [ProductController::class, 'updateDealStatus']);
     

@@ -1,165 +1,126 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { LogIn, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Zap, Flame, Sparkles, Package, GitCompare, Truck } from 'lucide-react';
+
+const navGroups = [
+    { label: 'Home', to: '/' },
+    { label: 'Shop', to: '/products' },
+    { label: 'Categories', to: '/#landing-categories', hash: 'landing-categories' },
+    { label: 'Deals', to: '/#landing-deals', hash: 'landing-deals' },
+    { label: 'Contact', to: '/#landing-contact', hash: 'landing-contact' },
+];
 
 export default function Header() {
-    const { isAuthenticated, isAdmin } = useAuth();
+    const { isAuthenticated } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [activeNav, setActiveNav] = useState('Home');
-    const homePath = '/'; // Always go to landing page
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuToggleRef = useRef(null);
 
     useEffect(() => {
-        if (location.pathname === '/' || location.pathname.startsWith('/dashboard')) {
-            setActiveNav('Home');
-            return;
-        }
+        setMenuOpen(false);
+    }, [location.pathname, location.search, location.hash]);
 
-    }, [location.pathname]);
+    useEffect(() => {
+        if (!menuOpen) return undefined;
 
-    const handleSearch = (e) => {
-        e.preventDefault();
-        if (searchQuery.trim()) {
-            navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
-        }
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                setMenuOpen(false);
+                menuToggleRef.current?.focus();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [menuOpen]);
+
+    const activeLabel = () => {
+        const hash = location.hash.replace(/^#/, '');
+        const activeHash = navGroups.find((item) => item.hash === hash);
+        if (activeHash && location.pathname === '/') return activeHash.label;
+        if (location.pathname.startsWith('/products')) return 'Shop';
+        if (location.pathname === '/') return 'Home';
+        return '';
     };
 
-    const isSameRoute = (to) => {
-        const [path, query = ''] = to.split('?');
-        const targetSearch = query ? `?${query}` : '';
-        return location.pathname === path && location.search === targetSearch;
-    };
-
-    const preventDuplicateNavigation = (to, event) => {
-        if (isSameRoute(to)) {
-            event.preventDefault();
-        }
-    };
+    const active = activeLabel();
 
     const handleHomeClick = (event) => {
-        setActiveNav('Home');
-
         if (location.pathname === '/') {
             event.preventDefault();
             if (window.location.hash) {
-                window.history.replaceState(null, '', `${location.pathname}${location.search}`);
+                navigate('/', { replace: true });
             }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+        setMenuOpen(false);
+        if (menuOpen) menuToggleRef.current?.focus();
     };
 
-    const navGroups = [
-        { label: 'Home', to: '/' },
-        { label: 'Shop', to: '/products' },
-        { label: 'Categories', to: '/#landing-categories' },
-        { label: 'Deals', to: '/#landing-deals' },
-        { label: 'Contact', to: '/#landing-contact' },
-    ];
+    const closeMenu = () => {
+        setMenuOpen(false);
+        if (menuOpen) menuToggleRef.current?.focus();
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('auth_validated_at');
+        window.location.href = '/';
+    };
 
     return (
-        <header className="site-header">
-            <div className="header-top">
-                <div className="header-inner">
-                    <Link to={homePath} className="brand-logo" aria-label="CarVex home">
-                        <span className="brand-mark">CV</span>
-                        <div className="brand-details">
-                            <span className="brand-name">CarVex</span>
-                            <span className="brand-tagline">PREMIUM AUTO PARTS</span>
-                        </div>
-                    </Link>
+        <header className={`site-header${menuOpen ? ' is-menu-open' : ''}`}>
+            <div className="header-inner">
+                <Link to="/" className="brand-logo" aria-label="CarVex home" onClick={handleHomeClick}>
+                    <span className="brand-logo-image-wrap">
+                        <img src="/images/carvex.png" className="brand-logo-image" alt="" />
+                    </span>
+                    <span className="brand-logo-copy"><strong>CarVex</strong><small>Auto parts</small></span>
+                </Link>
 
-                    <form className="search-form" onSubmit={handleSearch}>
-                        <span className="search-icon" aria-hidden="true">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="11" cy="11" r="8" />
-                                <path d="m21 21-4.35-4.35" />
-                            </svg>
-                        </span>
-                        <input
-                            type="text"
-                            className="search-input"
-                            placeholder="Search by part name, brand, or vehicle model..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        {searchQuery && (
-                            <button
-                                type="button"
-                                className="search-clear"
-                                aria-label="Clear search"
-                                onClick={() => setSearchQuery('')}
+                <nav id="primary-navigation" className="header-nav" aria-label="Primary navigation">
+                    {navGroups.map((item) => {
+                        const isActive = active === item.label;
+                        return (
+                            <Link
+                                key={item.label}
+                                to={item.to}
+                                className={`nav-link${isActive ? ' active' : ''}`}
+                                aria-current={isActive ? 'page' : undefined}
+                                onClick={item.label === 'Home' ? handleHomeClick : closeMenu}
                             >
-                                <span aria-hidden="true">x</span>
-                            </button>
-                        )}
-                        <button type="submit" className="search-button">
-                            Search
-                        </button>
-                    </form>
-
-                    <div className="header-actions">
-                        {isAuthenticated ? (
-                            <button className="action-link" onClick={() => {
-                                localStorage.removeItem('auth_token');
-                                localStorage.removeItem('auth_user');
-                                localStorage.removeItem('auth_validated_at');
-                                window.location.href = '/';
-                            }}>
-                                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                    <polyline points="16 17 21 12 16 7" />
-                                    <line x1="21" y1="12" x2="9" y2="12" />
-                                </svg>
-                                <span>Logout</span>
-                            </button>
-                        ) : (
-                            <Link to="/login" className="action-link">
-                                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                    <circle cx="12" cy="7" r="4" />
-                                </svg>
-                                <span>Login</span>
+                                {item.label}
                             </Link>
-                        )}
-                    </div>
+                        );
+                    })}
+                </nav>
+
+                <div className="header-actions">
+                    {isAuthenticated ? (
+                        <button type="button" className="action-link action-link--logout" onClick={handleLogout}>
+                            <LogOut size={17} aria-hidden="true" /> <span>Log out</span>
+                        </button>
+                    ) : (
+                        <Link to="/login" className="action-link action-link--login" onClick={closeMenu}>
+                            <LogIn size={17} aria-hidden="true" /> <span>Log in</span>
+                        </Link>
+                    )}
+                    <button
+                        ref={menuToggleRef}
+                        type="button"
+                        className="mobile-menu-toggle"
+                        aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                        aria-controls="primary-navigation"
+                        aria-expanded={menuOpen}
+                        onClick={() => setMenuOpen((open) => !open)}
+                    >
+                        {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+                    </button>
                 </div>
             </div>
-
-            <nav className="header-nav" aria-label="Primary">
-                <div className="header-nav-inner">
-                    {navGroups.map((group) => (
-                        <div className="nav-item" key={group.label}>
-                            {group.to.startsWith('/#') ? (
-                                <a
-                                    href={group.to}
-                                    className={`nav-link ${activeNav === group.label ? 'active' : ''}`}
-                                    onClick={() => setActiveNav(group.label)}
-                                >
-                                    {group.label}
-                                </a>
-                            ) : (
-                                <Link
-                                    to={group.to}
-                                    className={`nav-link ${activeNav === group.label ? 'active' : ''}`}
-                                    onClick={(event) => {
-                                        if (group.label === 'Home') {
-                                            handleHomeClick(event);
-                                            return;
-                                        }
-
-                                        setActiveNav(group.label);
-                                        preventDuplicateNavigation(group.to, event);
-                                    }}
-                                >
-                                    {group.label}
-                                </Link>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </nav>
         </header>
     );
 }

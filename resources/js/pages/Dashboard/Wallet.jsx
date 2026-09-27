@@ -63,7 +63,12 @@ export default function DashboardWallet() {
                 </article>
             </div>
 
-            {loading && <p style={{ marginTop: 12, color: '#64748b' }}>Loading wallet summary...</p>}
+            {loading ? (
+                <div role="status" aria-label="Loading wallet summary" style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+                    <span className="cv-skeleton-block" style={{ width: '48%', height: 14 }} />
+                    <span className="cv-skeleton-block" style={{ width: '72%', height: 24 }} />
+                </div>
+            ) : null}
         </section>
     );
 }

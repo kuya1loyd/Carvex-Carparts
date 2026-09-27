@@ -5,6 +5,7 @@ import adminService from '../../services/adminService';
 import ProductCreateModal from '../../components/ProductCreateModal';
 import ProductDetailModal from '../../components/ProductDetailModal';
 import ProductEditModal from '../../components/ProductEditModal';
+import PageSkeleton from '../../components/Skeleton';
 
 const currencyFormatter = new Intl.NumberFormat('en-PH', {
     style: 'currency',
@@ -211,10 +212,7 @@ export default function AdminProducts() {
         return (
             <div className="admin-page">
                 <div className="admin-workspace">
-                    <div className="admin-loading">
-                        <div className="spinner" />
-                        <p>Loading inventory workspace...</p>
-                    </div>
+                    <PageSkeleton variant="dashboard" label="Loading inventory workspace" />
                 </div>
             </div>
         );

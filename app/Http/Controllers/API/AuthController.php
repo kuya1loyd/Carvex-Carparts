@@ -18,6 +18,15 @@ use Throwable;
 
 class AuthController extends Controller
 {
+    private function googleOAuthConfigurationError(): ?string
+    {
+        if (blank(config('services.google.client_id')) || blank(config('services.google.client_secret'))) {
+            return 'Google sign-in is not configured on this server. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to valid Google OAuth credentials.';
+        }
+
+        return null;
+    }
+
     private function googleCallbackUrl(Request $request): string
     {
         $configured = trim((string) config('services.google.redirect', ''));
@@ -91,6 +100,10 @@ class AuthController extends Controller
     // Google OAuth: Redirect to Google
     public function redirectToGoogle(Request $request)
     {
+        if ($configurationError = $this->googleOAuthConfigurationError()) {
+            return response()->json(['message' => $configurationError], 503);
+        }
+
         /** @var \Laravel\Socialite\Two\GoogleProvider $driver */
         $driver = Socialite::driver('google');
         return $driver
@@ -107,6 +120,14 @@ class AuthController extends Controller
         if (is_array($statePayload) && !empty($statePayload['redirect_to'])) {
             $request->merge(['redirect_to' => (string) $statePayload['redirect_to']]);
             $redirectTo = $this->resolveFrontendRedirectUrl($request);
+        }
+
+        if ($configurationError = $this->googleOAuthConfigurationError()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $configurationError], 503);
+            }
+
+            return redirect()->away($this->appendQueryParam($redirectTo, 'error', 'google_not_configured'));
         }
 
         try {
@@ -164,14 +185,12 @@ class AuthController extends Controller
             Log::error('Google OAuth failed: ' . $fullError);
 
             if (!$request->expectsJson()) {
-                $errorMessageEncoded = urlencode($fullError);
                 $errorRedirect = $this->appendQueryParam($redirectTo, 'error', 'google_auth_failed');
-                $errorRedirect = $this->appendQueryParam($errorRedirect, 'error_detail', $errorMessageEncoded);
                 return redirect()->away($errorRedirect);
             }
 
             return response()->json([
-                'message' => 'Google authentication failed: ' . $fullError,
+                'message' => 'Google authentication could not be completed. Check the server OAuth configuration and try again.',
             ], 500);
         }
     }
@@ -253,6 +272,10 @@ class AuthController extends Controller
                 'message' => ucfirst($provider) . ' signup is not supported.',
                 'provider' => $provider,
             ], 422);
+        }
+
+        if ($configurationError = $this->googleOAuthConfigurationError()) {
+            return response()->json(['message' => $configurationError], 503);
         }
 
         $redirectTo = $this->resolveFrontendRedirectUrl($request);

@@ -1,43 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import PageSkeleton from '../components/Skeleton';
 
 export default function AuthCallback() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { loginWithToken, user } = useAuth();
     const [error, setError] = useState('');
-    const [debugInfo, setDebugInfo] = useState('');
 
     useEffect(() => {
         const handleCallback = async () => {
             try {
                 // Check for error from backend first
                 const errorParam = searchParams.get('error');
-                const errorDetail = searchParams.get('error_detail');
-                const fullUrl = window.location.href;
-                const search = window.location.search;
-                
-                // Store debug info
-                setDebugInfo(`URL: ${fullUrl}\nError: ${errorParam}\nDetail: ${errorDetail || 'none'}`);
-                
-                console.log('Full URL:', fullUrl);
-                console.log('Search params:', search);
-                console.log('Error param:', errorParam);
-                console.log('Error detail:', errorDetail);
                 
                 if (errorParam) {
                     const errorMessages = {
-                        'google_auth_failed': 'Google authentication failed. Please check your Google credentials in .env file.',
+                        'google_auth_failed': 'Google authentication could not be completed. Please check the server OAuth configuration and try again.',
+                        'google_not_configured': 'Google sign-in is not configured. The site administrator needs to add valid Google OAuth credentials.',
                         'invalid_state': 'Invalid authentication state. Please try again.',
                         'access_denied': 'Access was denied. Please try again.'
                     };
                     let message = errorMessages[errorParam] || `Authentication error: ${errorParam}`;
-                    if (errorDetail) {
-                        message += `\n\nDetails: ${decodeURIComponent(errorDetail)}`;
-                    }
                     setError(message);
-                    console.error('OAuth error:', errorParam, errorDetail);
                     return;
                 }
 
@@ -86,11 +72,6 @@ export default function AuthCallback() {
                             <div className="alert alert-danger" style={{ marginBottom: '20px', whiteSpace: 'pre-wrap', textAlign: 'left', fontSize: '14px' }}>
                                 {error}
                             </div>
-                            {debugInfo && (
-                                <div style={{ marginBottom: '20px', padding: '10px', background: '#f3f4f6', borderRadius: '6px', fontSize: '12px', textAlign: 'left', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-                                    <strong>Debug:</strong><br/>{debugInfo}
-                                </div>
-                            )}
                             <p style={{ color: '#6b7280', marginBottom: '20px' }}>
                                 Redirecting to login...
                             </p>
@@ -115,35 +96,5 @@ export default function AuthCallback() {
         );
     }
 
-    return (
-        <div className="auth-page">
-            <div className="auth-container">
-                <div className="auth-modal" style={{ maxWidth: '400px' }}>
-                    <div className="auth-modal__body" style={{ padding: '40px 20px', textAlign: 'center' }}>
-                        <div style={{ marginBottom: '20px' }}>
-                            <div className="spinner-border" role="status" style={{
-                                width: '40px',
-                                height: '40px',
-                                border: '3px solid rgba(255,28,28,0.2)',
-                                borderTopColor: '#ff1c1c',
-                                borderRadius: '50%',
-                                animation: 'spin 1s linear infinite',
-                                margin: '0 auto'
-                            }}>
-                                <span className="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                        <p style={{ color: '#6b7280', fontWeight: '500' }}>Processing authentication...</p>
-                        <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Please wait while we log you in</p>
-                    </div>
-                </div>
-                <style>{`
-                    @keyframes spin {
-                        from { transform: rotate(0deg); }
-                        to { transform: rotate(360deg); }
-                    }
-                `}</style>
-            </div>
-        </div>
-    );
+    return <PageSkeleton variant="route" label="Completing sign-in" />;
 }

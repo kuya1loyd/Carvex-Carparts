@@ -13,7 +13,7 @@ export default function Footer() {
                     <div className="footer-section brand-block">
                         <h3>About CarVex</h3>
                         <p>Your trusted online car parts shopping platform.</p>
-                        <p className="brand-note">Premium parts. Fast delivery. Trusted support.</p>
+                        <p className="brand-note">Auto parts. Helpful support.</p>
                     </div>
 
                     <div className="footer-section">

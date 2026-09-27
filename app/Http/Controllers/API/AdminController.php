@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\PromoCode;
 use App\Models\User;
+use App\Models\UserActivityLog;
 use App\Notifications\AdminDirectMessageNotification;
 use App\Notifications\PromoCodeNotification;
 use Carbon\Carbon;
@@ -23,6 +24,7 @@ class AdminController extends Controller
         // Count revenue from all non-cancelled checkouts so admin totals update as soon as an order is placed.
         $totalRevenue = (float) Order::where('status', '!=', 'cancelled')->sum('total_amount');
         $lowStockProducts = Product::where('is_active', true)
+            ->where('listing_status', 'approved')
             ->where('stock', '<=', 20)
             ->orderBy('stock')
             ->limit(10)
@@ -40,6 +42,11 @@ class AdminController extends Controller
             ->latest()
             ->limit(10)
             ->get(['id', 'user_id', 'name', 'email', 'subject', 'status', 'created_at']);
+        $recentListingActivity = UserActivityLog::query()
+            ->where('type', 'seller')
+            ->latest()
+            ->limit(10)
+            ->get();
 
         $recentActivities = collect()
             ->concat($recentOrders->map(static function (Order $order) {
@@ -81,6 +88,19 @@ class AdminController extends Controller
                     'created_at_ts' => $createdAt?->timestamp ?? 0,
                 ];
             }))
+            ->concat($recentListingActivity->map(static function (UserActivityLog $activity) {
+                $createdAt = optional($activity->created_at);
+
+                return [
+                    'type' => 'seller',
+                    'id' => 'activity-' . $activity->id,
+                    'title' => Str::headline(str_replace('_', ' ', $activity->action)),
+                    'description' => ($activity->actor_name ?: 'Seller') . ': ' . $activity->description,
+                    'status' => data_get($activity->metadata, 'listing_status'),
+                    'created_at' => $createdAt?->toISOString(),
+                    'created_at_ts' => $createdAt?->timestamp ?? 0,
+                ];
+            }))
             ->sortByDesc('created_at_ts')
             ->take(20)
             ->map(static function (array $activity) {
@@ -94,11 +114,12 @@ class AdminController extends Controller
             'data' => [
                 'total_revenue' => $totalRevenue,
                 'total_orders' => Order::count(),
-                'total_products' => Product::where('is_active', true)->count(),
+                'total_products' => Product::where('is_active', true)->where('listing_status', 'approved')->count(),
                 'total_users' => User::count(),
                 'total_customer_concerns' => CustomerConcern::count(),
                 'pending_customer_concerns' => CustomerConcern::where('status', 'pending')->count(),
-                'low_stock_count' => Product::where('is_active', true)->where('stock', '>', 0)->where('stock', '<=', 10)->count(),
+                'pending_seller_listings' => Product::whereNotNull('seller_id')->where('listing_status', 'pending')->count(),
+                'low_stock_count' => Product::where('is_active', true)->where('listing_status', 'approved')->where('stock', '>', 0)->where('stock', '<=', 10)->count(),
                 'low_stock_products' => $lowStockProducts,
                 'recent_orders' => $recentOrders,
                 'recent_users' => $recentUsers,
@@ -113,6 +134,7 @@ class AdminController extends Controller
         $query = User::query()
             ->where('role', '!=', 'admin')
             ->withCount('orders')
+            ->withCount('listings')
             ->addSelect([
                 'orders_total_amount' => Order::query()
                     ->selectRaw('COALESCE(SUM(total_amount), 0)')
@@ -160,6 +182,141 @@ class AdminController extends Controller
                 'current_page' => $rows->currentPage(),
                 'last_page' => $rows->lastPage(),
             ],
+        ]);
+    }
+
+    public function activity(Request $request)
+    {
+        $sellerActivities = DB::table('user_activity_logs')->selectRaw(
+            "'seller' as type, action, actor_name, actor_email, subject_name, description, metadata, created_at, id as source_id, 'seller' as source"
+        );
+
+        $customerActivities = DB::table('users')
+            ->where('role', 'customer')
+            ->selectRaw(
+                "'customer' as type, 'account_created' as action, name as actor_name, email as actor_email, name as subject_name, 'Created a customer account' as description, NULL as metadata, created_at, id as source_id, 'customer' as source"
+            );
+
+        $orderActivities = DB::table('orders')
+            ->leftJoin('users as activity_users', 'orders.user_id', '=', 'activity_users.id')
+            ->selectRaw(
+                "'order' as type, 'order_placed' as action, COALESCE(activity_users.name, 'Customer') as actor_name, activity_users.email as actor_email, orders.order_number as subject_name, 'Placed an order' as description, NULL as metadata, orders.created_at, orders.id as source_id, 'order' as source"
+            );
+
+        $concernActivities = DB::table('customer_concerns')
+            ->leftJoin('users as activity_users', 'customer_concerns.user_id', '=', 'activity_users.id')
+            ->selectRaw(
+                "'concern' as type, 'support_request' as action, COALESCE(activity_users.name, customer_concerns.name, 'Customer') as actor_name, COALESCE(activity_users.email, customer_concerns.email) as actor_email, customer_concerns.subject as subject_name, 'Submitted a support request' as description, NULL as metadata, customer_concerns.created_at, customer_concerns.id as source_id, 'concern' as source"
+            );
+
+        $activityStream = $sellerActivities
+            ->unionAll($customerActivities)
+            ->unionAll($orderActivities)
+            ->unionAll($concernActivities);
+
+        $query = DB::query()->fromSub($activityStream, 'activity_stream');
+
+        $type = (string) $request->query('type', '');
+        if ($type === 'customer') {
+            $query->whereIn('type', ['customer', 'order', 'concern']);
+        } elseif ($type === 'support') {
+            $query->where('type', 'concern');
+        } elseif (in_array($type, ['seller', 'order', 'concern'], true)) {
+            $query->where('type', $type);
+        }
+
+        if ($search = trim((string) $request->query('search', ''))) {
+            $query->where(function ($builder) use ($search) {
+                $like = '%' . $search . '%';
+                $builder->where('actor_name', 'like', $like)
+                    ->orWhere('actor_email', 'like', $like)
+                    ->orWhere('subject_name', 'like', $like)
+                    ->orWhere('description', 'like', $like);
+            });
+        }
+
+        $perPage = max(1, min(100, (int) $request->query('per_page', 30)));
+        $rows = $query
+            ->orderByDesc('created_at')
+            ->orderByDesc('source_id')
+            ->paginate($perPage);
+
+        $items = collect($rows->items())->map(static function ($row) {
+            $metadata = $row->metadata;
+            if (is_string($metadata)) {
+                $metadata = json_decode($metadata, true) ?: null;
+            }
+
+            return [
+                'id' => $row->source . '-' . $row->source_id,
+                'type' => $row->type,
+                'action' => $row->action,
+                'description' => $row->description,
+                'actor_name' => $row->actor_name,
+                'actor_email' => $row->actor_email,
+                'subject_name' => $row->subject_name,
+                'created_at' => Carbon::parse($row->created_at)->toISOString(),
+                'metadata' => $metadata,
+            ];
+        })->values();
+
+        return response()->json([
+            'message' => 'Activity retrieved successfully.',
+            'data' => [
+                'data' => $items,
+                'current_page' => $rows->currentPage(),
+                'last_page' => $rows->lastPage(),
+                'total' => $rows->total(),
+            ],
+        ]);
+    }
+
+    public function reviewSellerListing(Request $request, int $id)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:approved,rejected',
+            'review_note' => 'nullable|string|max:1000',
+        ]);
+
+        $product = Product::query()->whereNotNull('seller_id')->find($id);
+        if (!$product) {
+            return response()->json(['message' => 'Seller listing not found.'], 404);
+        }
+
+        $product->forceFill([
+            'listing_status' => $validated['status'],
+            'is_active' => $validated['status'] === 'approved',
+            'review_note' => $validated['status'] === 'rejected'
+                ? trim((string) ($validated['review_note'] ?? '')) ?: null
+                : null,
+        ])->save();
+
+        $actor = $request->user();
+        $action = $validated['status'] === 'approved' ? 'listing_approved' : 'listing_rejected';
+        $description = $validated['status'] === 'approved'
+            ? 'Approved the listing for the public shop.'
+            : 'Rejected the listing.';
+
+        UserActivityLog::create([
+            'user_id' => $actor?->id,
+            'product_id' => $product->id,
+            'type' => 'seller',
+            'action' => $action,
+            'actor_name' => $actor?->name,
+            'actor_email' => $actor?->email,
+            'subject_name' => $product->name,
+            'description' => $description,
+            'metadata' => [
+                'listing_id' => $product->id,
+                'seller_id' => $product->seller_id,
+                'listing_status' => $product->listing_status,
+                'review_note' => $product->review_note,
+            ],
+        ]);
+
+        return response()->json([
+            'message' => $validated['status'] === 'approved' ? 'Listing approved.' : 'Listing rejected.',
+            'data' => $product->fresh(['category', 'seller:id,name,email']),
         ]);
     }
 
@@ -295,7 +452,7 @@ class AdminController extends Controller
 
     public function products(Request $request)
     {
-        $query = Product::with('category')->latest();
+        $query = Product::with(['category', 'seller:id,name,email'])->latest();
 
         if ($q = trim((string) $request->query('q', ''))) {
             $query->where(function ($builder) use ($q) {
@@ -312,6 +469,11 @@ class AdminController extends Controller
 
         if ($request->filled('category_id')) {
             $query->where('category_id', (int) $request->input('category_id'));
+        }
+
+        $status = (string) $request->query('status', '');
+        if (in_array($status, ['pending', 'approved', 'rejected', 'archived'], true)) {
+            $query->where('listing_status', $status);
         }
 
         if (filter_var($request->input('count_only', false), FILTER_VALIDATE_BOOLEAN)) {

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import adminService from '../../services/adminService';
+import PageSkeleton from '../../components/Skeleton';
 import {
     CheckCircle2,
     Clock3,
@@ -251,13 +252,7 @@ export default function AdminConcerns() {
     };
 
     if (loading) {
-        return (
-            <div className="admin-page">
-                <div className="admin-dashboard-modern">
-                    <div className="loading">Loading support desk...</div>
-                </div>
-            </div>
-        );
+        return <PageSkeleton variant="dashboard" label="Loading the support desk" />;
     }
 
     return (

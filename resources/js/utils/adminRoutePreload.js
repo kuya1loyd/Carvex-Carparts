@@ -4,6 +4,7 @@ export const loadAdminProducts = () => import('../pages/Admin/Products');
 export const loadAdminOrders = () => import('../pages/Admin/Orders');
 export const loadAdminUsers = () => import('../pages/Admin/Users');
 export const loadAdminConcerns = () => import('../pages/Admin/Concerns');
+export const loadAdminActivity = () => import('../pages/Admin/Activity');
 
 const adminRouteLoaders = {
     '/admin/dashboard': loadAdminDashboard,
@@ -11,6 +12,7 @@ const adminRouteLoaders = {
     '/admin/products': loadAdminProducts,
     '/admin/orders': loadAdminOrders,
     '/admin/users': loadAdminUsers,
+    '/admin/activity': loadAdminActivity,
     '/admin/customer-service': loadAdminConcerns,
     '/admin/concerns': loadAdminConcerns,
 };

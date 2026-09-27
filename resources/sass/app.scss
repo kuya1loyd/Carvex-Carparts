@@ -26,6 +26,7 @@
 @import './components/header';
 @import './components/footer';
 @import './components/layout';
+@import './components/skeletons';
 @import './components/private-route';
 @import './components/admin-route';
 @import './admin-navbar';
@@ -43,6 +44,7 @@
 @import './pages/orders';
 @import './pages/profile';
 @import './pages/dashboard';
+@import './pages/seller-listings';
 @import './pages/customer-service';
 
 // ==========================================
@@ -57,3 +59,4 @@
 @import './pages/admin/users';
 @import './pages/admin/concerns';
 @import './pages/admin/professional-admin';
+@import './pages/admin/activity';
