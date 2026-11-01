@@ -25,9 +25,11 @@
   ],
   "env": {
     "APP_ENV": "production",
-    "APP_DEBUG": "false",
+    "APP_DEBUG": "true",
     "APP_URL": "https://carvex-carparts-omega.vercel.app",
+    "APP_KEY": "base64:xLU2VRdGo8F/cge+yXezL1aijVC2OURdUqdU+vnNPBs=",
     "DB_CONNECTION": "pgsql",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_i7qOghsWFl0P@ep-damp-queen-ahu1j223.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&options=endpoint%3Dep-damp-queen-ahu1j223",
     "APP_CONFIG_CACHE": "/tmp/config.php",
     "APP_EVENTS_CACHE": "/tmp/events.php",
     "APP_PACKAGES_CACHE": "/tmp/packages.php",

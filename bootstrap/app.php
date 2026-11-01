@@ -15,6 +15,11 @@ $app = new Illuminate\Foundation\Application(
     $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
 );
 
+// When running on Vercel serverless functions, redirect writable storage to /tmp/storage
+if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL']) || env('VERCEL') || env('VIEW_COMPILED_PATH')) {
+    $app->useStoragePath('/tmp/storage');
+}
+
 /*
 |--------------------------------------------------------------------------
 | Bind Important Interfaces

@@ -27,6 +27,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        $compiledPath = env('VIEW_COMPILED_PATH', '/tmp/views');
+        if (!is_dir($compiledPath)) {
+            @mkdir($compiledPath, 0755, true);
+        }
+
         $this->app->bind('db.connector.pgsql', \App\Database\Connectors\PostgresConnector::class);
 
         ServeCommand::$passthroughVariables = array_merge(
