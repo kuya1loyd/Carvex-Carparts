@@ -1,222 +1,262 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+    ShoppingBag,
+    Wallet,
+    Package,
+    ArrowRight,
+    Headphones,
+    Flag,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { ShoppingBag, Package, User, MessageSquare } from 'lucide-react';
 import orderService from '../../services/orderService';
+
+const currencyFormatter = new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
+
+const getCachedStats = (userId) => {
+    if (!userId) return null;
+    try {
+        const raw = localStorage.getItem(`carvex_overview_stats_${userId}`);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.totalOrders === 'number') {
+            return parsed;
+        }
+    } catch {
+        // Storage access error
+    }
+    return null;
+};
 
 export default function Overview() {
     const { user } = useAuth();
     const { cartItems } = useCart();
-    const [stats, setStats] = useState({
-        totalOrders: 0,
-        totalSpent: 0,
-        cartItems: 0,
-    });
-    const [loading, setLoading] = useState(true);
+    const [orderStats, setOrderStats] = useState(() => getCachedStats(user?.id) || { totalOrders: 0, totalSpent: 0 });
+    const [error, setError] = useState('');
+
+    const firstName = useMemo(() => {
+        const name = String(user?.name || '').trim();
+        return name ? name.split(' ')[0] : 'Member';
+    }, [user?.name]);
 
     useEffect(() => {
-        const fetchDashboardData = async () => {
-            try {
-                const ordersRes = await orderService.getMyOrders();
-                const orders = ordersRes.data?.data?.data || ordersRes.data?.data || [];
-                const totalSpent = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
+        const cached = getCachedStats(user?.id);
+        if (cached) {
+            setOrderStats(cached);
+        }
+    }, [user?.id]);
 
-                setStats({
-                    totalOrders: orders.length,
-                    totalSpent: totalSpent,
-                    cartItems: cartItems?.length || 0,
-                });
-            } catch (err) {
-                console.error('Failed to fetch dashboard data:', err);
-            } finally {
-                setLoading(false);
+    useEffect(() => {
+        let mounted = true;
+
+        const fetchDashboardData = async () => {
+            setError('');
+            try {
+                let totalOrders = 0;
+                let totalSpent = 0;
+
+                try {
+                    const summaryRes = await orderService.getOrderSummary();
+                    const summary = summaryRes.data?.data || {};
+                    totalOrders = Number(summary.total_orders || 0);
+                    totalSpent = Number(summary.total_spent || 0);
+                } catch {
+                    const ordersRes = await orderService.getMyOrders();
+                    const orders = ordersRes.data?.data?.data || ordersRes.data?.data || [];
+                    totalOrders = Array.isArray(orders) ? orders.length : 0;
+                    totalSpent = Array.isArray(orders)
+                        ? orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0)
+                        : 0;
+                }
+
+                if (mounted) {
+                    const nextStats = { totalOrders, totalSpent };
+                    setOrderStats(nextStats);
+                    if (user?.id) {
+                        try {
+                            localStorage.setItem(`carvex_overview_stats_${user.id}`, JSON.stringify(nextStats));
+                        } catch {
+                            // Ignore storage error
+                        }
+                    }
+                }
+            } catch (fetchError) {
+                if (mounted) {
+                    setError('Could not sync latest stats. Local summary is shown.');
+                }
             }
         };
 
-        fetchDashboardData();
-    }, [cartItems]);
+        void fetchDashboardData();
+        return () => {
+            mounted = false;
+        };
+    }, [user?.id]);
+
+    const quickLinks = [
+        {
+            to: '/dashboard/products',
+            title: 'Browse Parts',
+            subtitle: 'Find the right parts',
+            image: '/images/quick-brake.png',
+            alt: 'Brake Rotor',
+        },
+        {
+            to: '/dashboard/listings',
+            title: 'My Listings',
+            subtitle: 'Manage your listings',
+            image: '/images/quick-tag.png',
+            alt: 'My Listings',
+        },
+        {
+            to: '/dashboard/wishlist',
+            title: 'My Wishlist',
+            subtitle: 'Save your favorite items',
+            image: '/images/quick-heart.png',
+            alt: 'Wishlist',
+        },
+        {
+            to: '/dashboard/orders',
+            title: 'My Purchases',
+            subtitle: 'Track your orders',
+            image: '/images/quick-cart.png',
+            alt: 'Purchases',
+        },
+        {
+            to: '/dashboard/support',
+            title: 'Support',
+            subtitle: 'Get help and assistance',
+            image: '/images/quick-headset.png',
+            alt: 'Support',
+        },
+        {
+            to: '/dashboard/support',
+            title: 'Need a hand?',
+            subtitle: 'Contact CarVex support',
+            image: '/images/quick-car.png',
+            alt: 'CarVex Support',
+        },
+    ];
 
     return (
-        <div style={{ padding: '24px', background: '#f8fafc', minHeight: '100vh' }}>
-            {/* Header */}
-            <div style={{ marginBottom: '32px' }}>
-                <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>
-                    Dashboard
-                </h1>
-                <p style={{ margin: '6px 0 0', fontSize: '14px', color: '#64748b', fontWeight: 500 }}>
-                    Welcome back, <strong>{user?.name || 'Customer'}</strong>
-                </p>
-            </div>
+        <div className="overview-page-wrapper">
+            {/* HERO BANNER - White Mitsubishi Lancer Evolution X with dynamic red diagonal stripes */}
+            <section className="overview-hero-card" aria-label="Welcome banner">
+                <div className="overview-hero-content">
+                    <span className="overview-hero-eyebrow">YOUR CARVEX ACCOUNT</span>
+                    <h1 className="overview-hero-title">
+                        Welcome back, <span className="overview-hero-highlight">{firstName}</span>
+                    </h1>
+                    <p className="overview-hero-subtitle">
+                        Keep track of your purchases, saved parts, and seller listings.
+                    </p>
+                    <div className="overview-hero-accent-bar" aria-hidden="true" />
+                </div>
 
-            {/* Stats Row */}
-            <div aria-busy={loading} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                            <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Total Orders
-                            </p>
-                            <h3 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 900, color: '#0f172a' }}>{loading ? <span className="cv-skeleton-block cv-skeleton-stat" aria-hidden="true" /> : stats.totalOrders}</h3>
-                        </div>
-                        <Package size={32} color="#f97316" opacity={0.2} />
+                <div className="overview-hero-image-wrap" aria-hidden="true">
+                    <img
+                        src="/images/overview-hero-car.png"
+                        alt="CarVex Performance Car"
+                        className="overview-hero-car-img"
+                    />
+                </div>
+            </section>
+
+            {/* 3 STAT CARDS (Purchases, Total spent, Items in cart) */}
+            <section className="overview-stats-grid" aria-label="Account statistics">
+                {/* Purchases */}
+                <article className="overview-stat-card">
+                    <div className="overview-stat-icon-wrap">
+                        <ShoppingBag size={24} className="overview-stat-icon" />
                     </div>
-                </div>
-                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                            <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Total Spent
-                            </p>
-                            <h3 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 900, color: '#0f172a' }}>{loading ? <span className="cv-skeleton-block cv-skeleton-stat" aria-hidden="true" /> : `₱${stats.totalSpent.toFixed(2)}`}</h3>
-                        </div>
-                        <ShoppingBag size={32} color="#f97316" opacity={0.2} />
+                    <div className="overview-stat-data">
+                        <span className="overview-stat-label">Purchases</span>
+                        <strong className="overview-stat-value">{orderStats.totalOrders}</strong>
                     </div>
-                </div>
-                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                            <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Cart Items
-                            </p>
-                            <h3 style={{ margin: '8px 0 0', fontSize: '28px', fontWeight: 900, color: '#0f172a' }}>{loading ? <span className="cv-skeleton-block cv-skeleton-stat" aria-hidden="true" /> : stats.cartItems}</h3>
-                        </div>
-                        <ShoppingBag size={32} color="#f97316" opacity={0.2} />
+                    <Link to="/dashboard/orders" className="overview-stat-action">
+                        View history <ArrowRight size={14} />
+                    </Link>
+                </article>
+
+                {/* Total spent */}
+                <article className="overview-stat-card">
+                    <div className="overview-stat-icon-wrap">
+                        <Wallet size={24} className="overview-stat-icon" />
                     </div>
+                    <div className="overview-stat-data">
+                        <span className="overview-stat-label">Total spent</span>
+                        <strong className="overview-stat-value">{currencyFormatter.format(orderStats.totalSpent)}</strong>
+                    </div>
+                    <Link to="/dashboard/orders" className="overview-stat-action">
+                        View details <ArrowRight size={14} />
+                    </Link>
+                </article>
+
+                {/* Items in cart */}
+                <article className="overview-stat-card">
+                    <div className="overview-stat-icon-wrap">
+                        <Package size={24} className="overview-stat-icon" />
+                    </div>
+                    <div className="overview-stat-data">
+                        <span className="overview-stat-label">Items in cart</span>
+                        <strong className="overview-stat-value">{cartItems?.length || 0}</strong>
+                    </div>
+                    <Link to="/dashboard/cart" className="overview-stat-action">
+                        Go to cart <ArrowRight size={14} />
+                    </Link>
+                </article>
+            </section>
+
+            {/* QUICK LINKS SECTION */}
+            <section className="overview-quick-links-section" aria-labelledby="quick-links-heading">
+                <header className="overview-quick-links-header">
+                    <div className="overview-quick-links-title-wrap">
+                        <span className="overview-quick-links-bar" aria-hidden="true" />
+                        <h2 id="quick-links-heading">Quick Links</h2>
+                    </div>
+                    <span className="overview-quick-links-tagline">Your car parts hub at your fingertips</span>
+                </header>
+
+                <div className="overview-quick-links-grid">
+                    {quickLinks.map((item) => (
+                        <Link key={item.title} to={item.to} className="overview-quick-link-card">
+                            <div className="overview-quick-link-visual">
+                                <img src={item.image} alt={item.alt} />
+                            </div>
+                            <div className="overview-quick-link-info">
+                                <strong>{item.title}</strong>
+                                <small>{item.subtitle}</small>
+                            </div>
+                            <div className="overview-quick-link-arrow" aria-hidden="true">
+                                <ArrowRight size={16} />
+                            </div>
+                        </Link>
+                    ))}
                 </div>
-            </div>
+            </section>
 
-            {/* Quick Actions */}
-            <div style={{ marginBottom: '32px' }}>
-                <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Quick Actions
-                </h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
-                    <Link to="/dashboard/orders" style={{ textDecoration: 'none', display: 'block' }}>
-                        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', textAlign: 'center', cursor: 'pointer', transition: 'all 160ms ease', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#f97316';
-                                e.currentTarget.style.boxShadow = '0 8px 16px rgba(249, 115, 22, 0.15)';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#e2e8f0';
-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.06)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                        >
-                            <Package size={24} color="#f97316" style={{ marginBottom: '8px', display: 'block', margin: '0 auto 8px' }} />
-                            <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>My Orders</p>
-                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>Track & manage</p>
-                        </div>
-                    </Link>
-
-                    <Link to="/dashboard/products" style={{ textDecoration: 'none', display: 'block' }}>
-                        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', textAlign: 'center', cursor: 'pointer', transition: 'all 160ms ease', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#f97316';
-                                e.currentTarget.style.boxShadow = '0 8px 16px rgba(249, 115, 22, 0.15)';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#e2e8f0';
-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.06)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                        >
-                            <ShoppingBag size={24} color="#f97316" style={{ marginBottom: '8px', display: 'block', margin: '0 auto 8px' }} />
-                            <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Shop</p>
-                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>Browse parts</p>
-                        </div>
-                    </Link>
-
-                    <Link to="/dashboard/cart" style={{ textDecoration: 'none', display: 'block' }}>
-                        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', textAlign: 'center', cursor: 'pointer', transition: 'all 160ms ease', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#f97316';
-                                e.currentTarget.style.boxShadow = '0 8px 16px rgba(249, 115, 22, 0.15)';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#e2e8f0';
-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.06)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                        >
-                            <ShoppingBag size={24} color="#f97316" style={{ marginBottom: '8px', display: 'block', margin: '0 auto 8px' }} />
-                            <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Cart</p>
-                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>View items</p>
-                        </div>
-                    </Link>
-
-                    <Link to="/dashboard/profile" style={{ textDecoration: 'none', display: 'block' }}>
-                        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', textAlign: 'center', cursor: 'pointer', transition: 'all 160ms ease', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#f97316';
-                                e.currentTarget.style.boxShadow = '0 8px 16px rgba(249, 115, 22, 0.15)';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#e2e8f0';
-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.06)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                        >
-                            <User size={24} color="#f97316" style={{ marginBottom: '8px', display: 'block', margin: '0 auto 8px' }} />
-                            <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Profile</p>
-                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>Dashboard</p>
-                        </div>
-                    </Link>
-
-                    <Link to="/dashboard/support" style={{ textDecoration: 'none', display: 'block' }}>
-                        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', textAlign: 'center', cursor: 'pointer', transition: 'all 160ms ease', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#f97316';
-                                e.currentTarget.style.boxShadow = '0 8px 16px rgba(249, 115, 22, 0.15)';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#e2e8f0';
-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.06)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                        >
-                            <MessageSquare size={24} color="#f97316" style={{ marginBottom: '8px', display: 'block', margin: '0 auto 8px' }} />
-                            <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Support</p>
-                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>Message admin</p>
-                        </div>
-                    </Link>
+            {/* BOTTOM DARK FOOTER RIBBON */}
+            <footer className="overview-bottom-ribbon">
+                <div className="overview-bottom-ribbon__brand">
+                    <div className="overview-checkered-flag" aria-hidden="true">
+                        🏁
+                    </div>
+                    <strong>CarVex</strong>
+                    <span className="overview-ribbon-divider">|</span>
+                    <span className="overview-ribbon-slogan">Auto parts. Helpful support.</span>
                 </div>
-            </div>
-
-            {/* Featured Section */}
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '24px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' }}>
-                <h2 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Need Help?
-                </h2>
-                <p style={{ margin: '0 0 16px', fontSize: '14px', color: '#64748b', lineHeight: 1.6 }}>
-                    Have questions about your orders or account? Our support team is here to help you 24/7.
-                </p>
-                <Link
-                    to="/dashboard/support"
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '10px',
-                        padding: '10px 18px',
-                        fontSize: '13px',
-                        fontWeight: 700,
-                        textDecoration: 'none',
-                        boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)',
-                    }}
-                >
-                    Contact Support
+                <Link to="/dashboard/support" className="overview-bottom-ribbon__btn">
+                    <Headphones size={16} />
+                    <span>Open support</span>
+                    <ArrowRight size={14} />
                 </Link>
-            </div>
+            </footer>
         </div>
     );
 }

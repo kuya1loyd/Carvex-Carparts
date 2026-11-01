@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { ArrowRight, Trash2, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import PageSkeleton from '../components/Skeleton';
 
@@ -12,31 +12,30 @@ export default function Cart() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100">
-            <div className="border-b border-slate-200 bg-white/80 backdrop-blur">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-                    <span className="inline-flex items-center rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-orange-700 mb-3">
-                        Checkout Preview
-                    </span>
-                    <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 mb-2">Shopping Cart</h1>
-                    <p className="text-slate-600 text-sm sm:text-base">{cartItems.length} {cartItems.length === 1 ? 'item' : 'items'} in cart</p>
+        <div className="carvex-cart-page min-h-screen">
+            <header className="carvex-cart-header">
+                <div className="carvex-cart-header__inner">
+                    <div>
+                        <span className="carvex-cart-eyebrow">YOUR CARVEX ORDER</span>
+                        <h1 className="carvex-cart-title">Shopping cart</h1>
+                        <p className="carvex-cart-count">{cartItems.length} {cartItems.length === 1 ? 'item' : 'items'} in cart</p>
+                    </div>
+                    <Link to="/products" className="carvex-cart-header__link">Continue shopping <ArrowRight size={16} aria-hidden="true" /></Link>
                 </div>
-            </div>
+            </header>
 
             {cartItems.length === 0 ? (
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-                    <div className="text-center rounded-3xl border border-slate-200 bg-white p-10 sm:p-16 shadow-xl shadow-slate-900/5">
-                        <ShoppingCart className="w-16 sm:w-24 h-16 sm:h-24 text-slate-300 mx-auto mb-4" />
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3 sm:mb-4">Your cart is empty</h2>
-                        <p className="text-slate-600 mb-6 sm:mb-8 max-w-md mx-auto">Start adding products to build your order. Your saved items will appear here.</p>
-                        <Link
-                            to="/products"
-                            className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-6 sm:px-8 py-3 sm:py-4 font-semibold text-white shadow-lg shadow-orange-500/25 transition-transform hover:-translate-y-0.5"
-                        >
-                            Shop Now
-                        </Link>
-                    </div>
-                </div>
+                <main className="carvex-cart-main">
+                    <section className="carvex-cart-empty" aria-labelledby="cart-empty-title">
+                        <div className="carvex-cart-empty__icon"><ShoppingCart size={27} aria-hidden="true" /></div>
+                        <div className="carvex-cart-empty__copy">
+                            <p className="carvex-cart-eyebrow">NOTHING IN YOUR CART YET</p>
+                            <h2 id="cart-empty-title">Find the part that keeps you moving.</h2>
+                            <p>Browse the CarVex catalog and add the parts you need. They’ll be ready for you here.</p>
+                            <Link to="/products" className="carvex-cart-shop-link">Browse parts <ArrowRight size={17} aria-hidden="true" /></Link>
+                        </div>
+                    </section>
+                </main>
             ) : (
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
                     <div className="grid lg:grid-cols-3 gap-6 sm:gap-8 items-start">

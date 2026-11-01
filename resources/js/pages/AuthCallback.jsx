@@ -27,16 +27,20 @@ export default function AuthCallback() {
                     return;
                 }
 
-                // OAuth providers may return the token in query params or URL hash
-                const token = searchParams.get('token') || 
-                             new URLSearchParams(window.location.hash.substring(1)).get('access_token');
+                // The backend returns short-lived auth data in the URL fragment so
+                // the token is not sent in HTTP referrers or server access logs.
+                const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+                const token = hashParams.get('token')
+                    || hashParams.get('access_token')
+                    || searchParams.get('token');
                 
                 if (!token) {
                     setError('No authentication token received. Please try again.');
-                    console.error('No token in callback:', { search: window.location.search, hash: window.location.hash });
                     setTimeout(() => navigate('/login'), 2000);
                     return;
                 }
+
+                window.history.replaceState({}, document.title, window.location.pathname);
 
                 // Store the token
                 localStorage.setItem('auth_token', token);
@@ -47,14 +51,13 @@ export default function AuthCallback() {
                     const isAdmin = result?.user?.role === 'admin' || result?.user?.is_admin === true || user?.role === 'admin';
                     
                     // Redirect admins to admin panel, customers to dashboard.
-                    window.location.href = isAdmin ? '/admin/dashboard' : '/dashboard/overview';
+                    window.location.href = isAdmin ? '/admin/dashboard' : '/dashboard';
                 } catch (authErr) {
-                    // Token is stored, redirect to dashboard
-                    // User info will be fetched on next page load
-                    window.location.href = '/dashboard/overview';
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('auth_user');
+                    setError('Google sign-in could not be confirmed. Please try again.');
                 }
             } catch (err) {
-                console.error('OAuth callback error:', err);
                 setError('Authentication failed. Please try again.');
                 setTimeout(() => navigate('/login'), 2000);
             }

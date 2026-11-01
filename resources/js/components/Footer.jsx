@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Mail, MapPin, Phone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Footer() {
@@ -11,48 +12,44 @@ export default function Footer() {
             <div className="footer-content">
                 <div className="footer-grid">
                     <div className="footer-section brand-block">
-                        <h3>About CarVex</h3>
-                        <p>Your trusted online car parts shopping platform.</p>
-                        <p className="brand-note">Auto parts. Helpful support.</p>
+                        <Link to="/" className="footer-brand" aria-label="CarVex home">
+                            <img src="/images/carvex.png" alt="" />
+                            <span><strong>CarVex</strong><small>Auto parts</small></span>
+                        </Link>
+                        <p>Parts for the road ahead. Find what you need, get help with fit, and keep your vehicle moving.</p>
                     </div>
 
-                    <div className="footer-section">
-                        <h3>Quick Links</h3>
+                    <nav className="footer-section" aria-label="Shop links">
+                        <h3>Shop</h3>
                         <ul>
-                            <li><Link to="/">Home</Link></li>
-                            <li><Link to="/products">Products</Link></li>
-                            <li><Link to={cartPath}>Cart</Link></li>
-                            <li><Link to="/login">Login</Link></li>
+                            <li><Link to="/products">All products</Link></li>
+                            <li><Link to="/products">Shop parts</Link></li>
+                            <li><Link to={cartPath}>Shopping cart</Link></li>
                         </ul>
-                    </div>
+                    </nav>
 
-                    <div className="footer-section">
-                        <h3>Contact</h3>
-                        <p className="contact-item">
-                            <span className="contact-icon" aria-hidden="true">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <rect x="3" y="5" width="18" height="14" rx="2" />
-                                    <path d="m3 7 9 6 9-6" />
-                                </svg>
-                            </span>
+                    <nav className="footer-section" aria-label="CarVex links">
+                        <h3>CarVex</h3>
+                        <ul>
+                            <li><Link to="/customer-service">Customer support</Link></li>
+                            <li><Link to="/terms">Terms of service</Link></li>
+                            <li><Link to="/privacy">Privacy policy</Link></li>
+                        </ul>
+                    </nav>
+
+                    <div className="footer-section footer-contact">
+                        <h3>Talk to our team</h3>
+                        <a className="contact-item" href="mailto:support@carvex.ph">
+                            <Mail size={17} aria-hidden="true" />
                             <span>support@carvex.ph</span>
-                        </p>
+                        </a>
+                        <a className="contact-item" href="tel:+639395158432">
+                            <Phone size={17} aria-hidden="true" />
+                            <span>+63 939 515 8432</span>
+                        </a>
                         <p className="contact-item">
-                            <span className="contact-icon" aria-hidden="true">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.35 1.78.68 2.61a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.47-1.25a2 2 0 0 1 2.11-.45c.83.33 1.71.56 2.61.68A2 2 0 0 1 22 16.92z" />
-                                </svg>
-                            </span>
-                            <span>+63 9395158432</span>
-                        </p>
-                        <p className="contact-item">
-                            <span className="contact-icon" aria-hidden="true">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0z" />
-                                    <circle cx="12" cy="10" r="3" />
-                                </svg>
-                            </span>
-                            <span>Agusan del Norte, Butuan City</span>
+                            <MapPin size={17} aria-hidden="true" />
+                            <span>Butuan City, Agusan del Norte</span>
                         </p>
                     </div>
                 </div>
@@ -60,6 +57,7 @@ export default function Footer() {
 
             <div className="footer-bottom">
                 <p>&copy; {new Date().getFullYear()} CarVex. All rights reserved.</p>
+                <span>Built for better journeys.</span>
             </div>
         </footer>
     );

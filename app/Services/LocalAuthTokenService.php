@@ -90,6 +90,7 @@ class LocalAuthTokenService
             'email' => strtolower(trim((string) $user->email)),
             'name' => (string) $user->name,
             'role' => (string) ($user->role ?? 'customer'),
+            'ver' => (int) ($user->auth_token_version ?? 0),
             'typ' => 'access',
             'iat' => $now,
             'exp' => $now + ($ttlMinutes * 60),
@@ -163,7 +164,11 @@ class LocalAuthTokenService
             $user = $this->findUserById($userId);
         }
 
-        if (!$user || !$user->is_active) {
+        if (!$user || !$user->is_active || !$user->hasVerifiedEmail()) {
+            return null;
+        }
+
+        if ((int) ($claims['ver'] ?? 0) !== (int) ($user->auth_token_version ?? 0)) {
             return null;
         }
 

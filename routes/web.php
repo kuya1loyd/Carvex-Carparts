@@ -1,11 +1,14 @@
-
 <?php
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 
-Route::get('/auth/redirect/google', [AuthController::class, 'redirectToGoogle']);
-Route::get('/auth/callback/google', [AuthController::class, 'handleGoogleCallback']);
+Route::get('/auth/redirect/google', [AuthController::class, 'redirectToGoogle'])->middleware('throttle:10,1');
+Route::get('/auth/callback/google', [AuthController::class, 'handleGoogleCallback'])->middleware('throttle:10,1');
+Route::get('/auth/oauth-url/{provider}', [AuthController::class, 'oauthUrl'])->middleware('throttle:10,1');
+Route::get('/auth/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
 
 $spaResponse = function () {
     return response()

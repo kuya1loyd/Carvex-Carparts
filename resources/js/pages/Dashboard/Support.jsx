@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Clock3, LifeBuoy, MessageSquare, RefreshCw, Send } from 'lucide-react';
+import { CheckCircle2, Clock3, LifeBuoy, MessageSquare, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import supportService from '../../services/supportService';
 import PageSkeleton from '../../components/Skeleton';
@@ -94,6 +94,11 @@ export default function DashboardSupport() {
 
     useEffect(() => {
         loadConcerns({ preserveSelection: false });
+        // Automatically keep tickets synced from database via useState
+        const timer = setInterval(() => {
+            loadConcerns({ silent: true, preserveSelection: true });
+        }, 12000);
+        return () => clearInterval(timer);
     }, [requestedConcernId]);
 
     const activeConcern = useMemo(
@@ -168,27 +173,6 @@ export default function DashboardSupport() {
                             Send product questions, order concerns, or account issues here. When the admin replies, the answer will appear in this support inbox.
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => loadConcerns({ silent: true })}
-                        disabled={refreshing}
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            minHeight: '44px',
-                            borderRadius: '999px',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            background: 'rgba(255,255,255,0.08)',
-                            color: '#ffffff',
-                            padding: '0 16px',
-                            fontWeight: 800,
-                            cursor: refreshing ? 'wait' : 'pointer',
-                        }}
-                    >
-                        <RefreshCw size={16} style={{ opacity: refreshing ? 0.65 : 1 }} />
-                        {refreshing ? 'Refreshing...' : 'Refresh inbox'}
-                    </button>
                 </div>
 
                 <div style={{ marginTop: '18px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>

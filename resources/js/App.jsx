@@ -20,34 +20,34 @@ import {
     loadAdminUsers,
 } from './utils/adminRoutePreload';
 
-const Landing = lazy(() => import('./pages/Landing'));
+import Landing from './pages/Landing';
 const Home = lazy(() => import('./pages/Home'));
-const Products = lazy(() => import('./pages/Products'));
+import Products from './pages/Products';
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
-const Cart = lazy(() => import('./pages/Cart'));
+import Cart from './pages/Cart';
 const Orders = lazy(() => import('./pages/Orders'));
 const OrderDetail = lazy(() => import('./pages/OrderDetail'));
 const Profile = lazy(() => import('./pages/Profile'));
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
+import Login from './pages/Login';
+import Register from './pages/Register';
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Privacy = lazy(() => import('./pages/Privacy'));
-const CustomerService = lazy(() => import('./pages/CustomerService'));
-const DashboardOverview = lazy(() => import('./pages/Dashboard/Overview'));
-const DashboardProfile = lazy(() => import('./pages/Dashboard/Profile'));
-const DashboardOrders = lazy(() => import('./pages/Dashboard/Orders'));
-const DashboardProducts = lazy(() => import('./pages/Dashboard/Products'));
-const DashboardCart = lazy(() => import('./pages/Dashboard/Cart'));
-const DashboardSupport = lazy(() => import('./pages/Dashboard/Support'));
-const DashboardWishlist = lazy(() => import('./pages/Dashboard/Wishlist'));
-const DashboardWallet = lazy(() => import('./pages/Dashboard/Wallet'));
-const DashboardListings = lazy(() => import('./pages/Dashboard/Listings'));
-const DashboardAddresses = lazy(() => import('./pages/Dashboard/Addresses'));
-const DashboardCheckout = lazy(() => import('./pages/Dashboard/Checkout'));
-const DashboardCheckoutSuccess = lazy(() => import('./pages/Dashboard/CheckoutSuccess'));
+import CustomerService from './pages/CustomerService';
+import DashboardOverview from './pages/Dashboard/Overview';
+import DashboardProfile from './pages/Dashboard/Profile';
+import DashboardOrders from './pages/Dashboard/Orders';
+import DashboardProducts from './pages/Dashboard/Products';
+import DashboardCart from './pages/Dashboard/Cart';
+import DashboardSupport from './pages/Dashboard/Support';
+import DashboardWishlist from './pages/Dashboard/Wishlist';
+import DashboardMessages from './pages/Dashboard/Messages';
+import DashboardListings from './pages/Dashboard/Listings';
+import DashboardAddresses from './pages/Dashboard/Addresses';
+import DashboardCheckout from './pages/Dashboard/Checkout';
+import DashboardCheckoutSuccess from './pages/Dashboard/CheckoutSuccess';
 const AdminDashboard = lazy(loadAdminDashboard);
 const AdminAccount = lazy(loadAdminAccount);
 const AdminProducts = lazy(loadAdminProducts);
@@ -58,23 +58,35 @@ const AdminOrders = lazy(loadAdminOrders);
 const AdminUsers = lazy(loadAdminUsers);
 const AdminConcerns = lazy(loadAdminConcerns);
 const AdminActivity = lazy(() => import('./pages/Admin/Activity'));
+const AdminMessages = lazy(() => import('./pages/Admin/Messages'));
 const AdminOrderDetail = lazy(() => import('./pages/Admin/OrderDetail'));
 
 function RouteLoader() {
-    return <PageSkeleton variant="route" label="Loading page" />;
+    return (
+        <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', background: '#ffffff' }}>
+            <div style={{ width: '38px', height: '38px', border: '3px solid #fee2e2', borderTopColor: '#dc2626', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+    );
 }
 
 function GuestOnly({ children }) {
-    const { isReady } = useAuth();
+    const { isReady, isAuthenticated, isAdmin } = useAuth();
+    const cachedToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const effectivelyAuthenticated = isAuthenticated || Boolean(cachedToken);
 
     if (!isReady) {
         return <RouteLoader />;
+    }
+
+    if (effectivelyAuthenticated) {
+        return <Navigate to={isAdmin ? '/admin/dashboard' : '/dashboard'} replace />;
     }
 
     return children;
 }
 
 function LandingEntry() {
+    const { isAuthenticated, isAdmin } = useAuth();
     const location = useLocation();
 
     const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
@@ -86,11 +98,50 @@ function LandingEntry() {
         return <Navigate to={`/reset-password${location.search}${window.location.hash || ''}`} replace />;
     }
 
+    const cachedToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const effectivelyAuthenticated = isAuthenticated || Boolean(cachedToken);
+
+    if (effectivelyAuthenticated) {
+        return <Navigate to={isAdmin ? '/admin/dashboard' : '/dashboard'} replace />;
+    }
+
     return <Landing />;
 }
 
 function ProductsEntry() {
+    const { isAuthenticated, isAdmin } = useAuth();
+    const cachedToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const effectivelyAuthenticated = isAuthenticated || Boolean(cachedToken);
+
+    if (effectivelyAuthenticated) {
+        return <Navigate to={isAdmin ? '/admin/products' : '/dashboard/products'} replace />;
+    }
+
     return <Products />;
+}
+
+function SupportEntry() {
+    const { isAuthenticated, isAdmin } = useAuth();
+    const cachedToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const effectivelyAuthenticated = isAuthenticated || Boolean(cachedToken);
+
+    if (effectivelyAuthenticated) {
+        return <Navigate to={isAdmin ? '/admin/customer-service' : '/dashboard/support'} replace />;
+    }
+
+    return <CustomerService />;
+}
+
+function CatchAllEntry() {
+    const { isAuthenticated, isAdmin } = useAuth();
+    const cachedToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const effectivelyAuthenticated = isAuthenticated || Boolean(cachedToken);
+
+    if (effectivelyAuthenticated) {
+        return <Navigate to={isAdmin ? '/admin/dashboard' : '/dashboard'} replace />;
+    }
+
+    return <Navigate to="/" replace />;
 }
 
 function CartEntry() {
@@ -137,7 +188,7 @@ export default function App() {
                             <Route path="/home" element={<LandingEntry />} />
                             <Route path="/products" element={<ProductsEntry />} />
                             <Route path="/products/:id" element={<ProductDetail />} />
-                            <Route path="/customer-service" element={<CustomerService />} />
+                            <Route path="/customer-service" element={<SupportEntry />} />
                             <Route path="/cart" element={<CartEntry />} />
                             <Route path="/customer-home" element={<Home />} />
 
@@ -154,7 +205,7 @@ export default function App() {
                         <Route element={<CustomerRoute />}>
                             <Route element={<CustomerDashboardLayout />}>
                                 <Route path="/dashboard" element={<DashboardOverview />} />
-                                <Route path="/dashboard/overview" element={<DashboardOverview />} />
+                                <Route path="/dashboard/overview" element={<Navigate to="/dashboard" replace />} />
                                 <Route path="/dashboard/profile" element={<DashboardProfile />} />
                                 <Route path="/dashboard/settings" element={<DashboardProfile />} />
                                 <Route path="/dashboard/orders" element={<DashboardOrders />} />
@@ -164,7 +215,8 @@ export default function App() {
                                 <Route path="/dashboard/support" element={<DashboardSupport />} />
                                 <Route path="/dashboard/garage" element={<Navigate to="/dashboard/products" replace />} />
                                 <Route path="/dashboard/wishlist" element={<DashboardWishlist />} />
-                                <Route path="/dashboard/wallet" element={<DashboardWallet />} />
+                                <Route path="/dashboard/wallet" element={<Navigate to="/dashboard" replace />} />
+                                <Route path="/dashboard/messages" element={<DashboardMessages />} />
                                 <Route path="/dashboard/listings" element={<DashboardListings />} />
                                 <Route path="/dashboard/addresses" element={<DashboardAddresses />} />
                                 <Route path="/dashboard/cart" element={<DashboardCart />} />
@@ -189,13 +241,14 @@ export default function App() {
                                 <Route path="/admin/orders/:id" element={<AdminOrderDetail />} />
                                 <Route path="/admin/users" element={<AdminUsers />} />
                                 <Route path="/admin/activity" element={<AdminActivity />} />
+                                <Route path="/admin/messages" element={<AdminMessages />} />
                                 <Route path="/admin/customer-service" element={<AdminConcerns />} />
                                 <Route path="/admin/concerns" element={<Navigate to="/admin/customer-service" replace />} />
                             </Route>
                         </Route>
 
                         {/* Catch all */}
-                        <Route path="*" element={<Navigate to="/" replace />} />
+                        <Route path="*" element={<CatchAllEntry />} />
                     </Routes>
                     </Suspense>
                 </CartProvider>

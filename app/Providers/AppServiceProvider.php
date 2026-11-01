@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Console\Commands\ServeCommand as CustomServeCommand;
+use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -13,6 +15,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        $this->app->extend(ServeCommand::class, function () {
+            return new CustomServeCommand;
+        });
     }
 
     /**
@@ -23,5 +28,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->app->bind('db.connector.pgsql', \App\Database\Connectors\PostgresConnector::class);
+
+        ServeCommand::$passthroughVariables = array_merge(
+            ServeCommand::$passthroughVariables,
+            ['SystemRoot', 'Path', 'TEMP', 'TMP', 'windir', 'ComSpec', 'PATHEXT']
+        );
     }
 }

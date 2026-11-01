@@ -95,6 +95,11 @@ return [
         ],
     ],
 
+    'verification' => [
+        'expire' => 60,
+        'throttle' => 6,
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Password Confirmation Timeout

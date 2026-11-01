@@ -37,42 +37,33 @@ export default function ForgotPassword() {
     };
 
     return (
-        <div className="auth-page">
+        <div className="auth-page auth-page--forgot">
             <div className="auth-container">
-                <div className="auth-modal">
+                <section className="auth-modal" aria-labelledby="forgot-password-heading">
                     <div className="auth-modal__header">
+                        <Link to="/" className="auth-brand" aria-label="CarVex home">
+                            <span className="auth-brand__mark" aria-hidden="true">C</span>
+                            <span>CarVex</span>
+                        </Link>
                         <p className="auth-modal__back-link">
                             <Link to="/" className="auth-link">Back to Home</Link>
                         </p>
-                        <h1>Reset Password</h1>
+                        <h1 id="forgot-password-heading">Reset your password</h1>
                         <p className="auth-modal__subtitle">Enter your email to receive a reset link</p>
                     </div>
                     <div className="auth-modal__body">
-                        {error && <div className="alert alert-danger">{error}</div>}
-                        {success && <div className="alert alert-success">{success}</div>}
+                        {error && <div className="alert alert-danger" role="alert">{error}</div>}
+                        {success && <div className="alert alert-success" role="status">{success}</div>}
                         {resetLink && (
-                            <div className="alert alert-info" style={{textAlign: 'center', padding: '18px 10px', borderRadius: 8, marginBottom: 18}}>
+                            <div className="auth-reset-link">
                                 <a
                                     href={resetLink}
-                                    style={{
-                                        display: 'inline-block',
-                                        background: '#0ea5e9',
-                                        color: '#fff',
-                                        padding: '10px 22px',
-                                        borderRadius: 6,
-                                        fontWeight: 700,
-                                        fontSize: 16,
-                                        textDecoration: 'none',
-                                        marginTop: 4
-                                    }}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
                                     Open Password Reset
                                 </a>
-                                <div style={{ color: '#64748b', fontSize: 13, marginTop: 10 }}>
-                                    This fallback link is shown only because the email could not be delivered.
-                                </div>
+                                <p>This fallback link is available because email delivery failed.</p>
                             </div>
                         )}
                         <form onSubmit={handleSubmit} className="auth-form">
@@ -86,22 +77,25 @@ export default function ForgotPassword() {
                                     placeholder="your@email.com"
                                     required
                                     autoComplete="email"
-                                    disabled={success}
+                                    disabled={Boolean(success)}
+                                    inputMode="email"
+                                    aria-invalid={Boolean(error)}
                                 />
                             </div>
                             <button 
                                 type="submit" 
                                 className="btn btn-primary btn-block" 
-                                disabled={loading || success}
+                                disabled={loading || Boolean(success)}
+                                aria-busy={loading}
                             >
-                                {loading ? 'Sending...' : success ? 'Email Sent' : 'Send Reset Link'}
+                                {loading ? 'Sending...' : success ? 'Email sent' : 'Send reset link'}
                             </button>
                         </form>
                         <div className="auth-footer">
                             <p>Remember your password? <Link to="/login" className="auth-link">Back to login</Link></p>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
         </div>
     );

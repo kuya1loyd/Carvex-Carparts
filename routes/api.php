@@ -11,6 +11,8 @@ use App\Http\Controllers\API\CustomerConcernController;
 use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\PromoCodeController;
 use App\Http\Controllers\API\SellerListingController;
+use App\Http\Controllers\API\MessageController;
+use App\Http\Controllers\API\SupportChatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,16 +24,16 @@ use App\Http\Controllers\API\SellerListingController;
 |
 */
 
-// Google OAuth
-Route::get('/auth/redirect/google', [AuthController::class, 'redirectToGoogle']);
-Route::get('/auth/callback/google', [AuthController::class, 'handleGoogleCallback']);
-
 // Authentication Routes (Public)
-Route::post('/auth/register', 'App\\Http\\Controllers\\API\\AuthController@register');
-Route::post('/auth/login', 'App\\Http\\Controllers\\API\\AuthController@login');
-Route::post('/auth/forgot-password', 'App\\Http\\Controllers\\API\\AuthController@forgotPassword');
-Route::post('/auth/reset-password', 'App\\Http\\Controllers\\API\\AuthController@resetPassword');
-Route::get('/auth/oauth-url/{provider}', 'App\\Http\\Controllers\\API\\AuthController@oauthUrl');
+Route::post('/auth/register', 'App\\Http\\Controllers\\API\\AuthController@register')->middleware('throttle:5,1');
+Route::post('/auth/login', 'App\\Http\\Controllers\\API\\AuthController@login')->middleware('throttle:5,1');
+Route::post('/auth/forgot-password', 'App\\Http\\Controllers\\API\\AuthController@forgotPassword')->middleware('throttle:3,1');
+Route::post('/auth/reset-password', 'App\\Http\\Controllers\\API\\AuthController@resetPassword')->middleware('throttle:5,1');
+Route::post('/auth/email/resend', [AuthController::class, 'resendVerification'])->middleware('throttle:3,1');
+Route::post('/auth/email/status', [AuthController::class, 'verificationStatus'])->middleware('throttle:30,1');
+
+// Optional AI-powered customer support. Provider credentials remain server-side.
+Route::post('/support/chat', [SupportChatController::class, 'reply'])->middleware('throttle:8,1');
 
 // Protected Authentication Routes
 Route::middleware('local.auth')->group(function () {
@@ -50,6 +52,13 @@ Route::middleware('local.auth')->group(function () {
     Route::post('/seller/listings', [SellerListingController::class, 'store']);
     Route::patch('/seller/listings/{id}', [SellerListingController::class, 'update']);
     Route::delete('/seller/listings/{id}', [SellerListingController::class, 'destroy']);
+    Route::get('/messages', [MessageController::class, 'index'])->middleware('throttle:30,1');
+    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount'])->middleware('throttle:60,1');
+    Route::post('/messages', [MessageController::class, 'store'])->middleware('throttle:12,1');
+    Route::get('/messages/{conversationId}', [MessageController::class, 'show'])->whereNumber('conversationId');
+    Route::post('/messages/{conversationId}', [MessageController::class, 'reply'])
+        ->whereNumber('conversationId')
+        ->middleware('throttle:12,1');
 });
 
 // Product Routes (Public)
@@ -78,6 +87,7 @@ Route::middleware('local.auth')->group(function () {
 // Order Routes (Protected)
 Route::middleware('local.auth')->group(function () {
     Route::get('/orders', [OrderController::class, 'index']);
+    Route::get('/my-orders/summary', [OrderController::class, 'summary']);
     Route::get('/my-orders', [OrderController::class, 'myOrders']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'create']);
@@ -125,4 +135,9 @@ Route::middleware(['local.auth', 'admin'])->group(function () {
     // Customer Concerns
     Route::get('/admin/customer-concerns', [CustomerConcernController::class, 'index']);
     Route::patch('/admin/customer-concerns/{customerConcern}', [CustomerConcernController::class, 'update']);
+
+    // Marketplace messages: admin access is server-gated by the admin middleware.
+    Route::get('/admin/messages', [MessageController::class, 'adminIndex']);
+    Route::get('/admin/messages/{conversationId}', [MessageController::class, 'adminShow'])->whereNumber('conversationId');
+    Route::delete('/admin/messages/{conversationId}', [MessageController::class, 'adminDestroy'])->whereNumber('conversationId');
 });

@@ -14,10 +14,10 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
         <!-- Styles -->
-        <link rel="stylesheet" href="/css/app.css">
+        <link rel="stylesheet" href="/css/app.css?v={{ file_exists(public_path('css/app.css')) ? filemtime(public_path('css/app.css')) : time() }}">
 
     </head>
-    <body>
+    <body style="background-color: #ffffff;">
         <div id="app"></div>
         
         <!-- Scripts -->
@@ -41,7 +41,7 @@
                 });
             })();
         </script>
-        <script src="/js/app.js"></script>
+        <script src="/js/app.js?v={{ file_exists(public_path('js/app.js')) ? filemtime(public_path('js/app.js')) : time() }}"></script>
 
     </body>
 </html>

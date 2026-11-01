@@ -68,6 +68,26 @@ class OrderController extends Controller
         ]);
     }
 
+    public function summary(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $stats = DB::table('orders')
+            ->where('user_id', $user->id)
+            ->selectRaw('COUNT(*) as total_orders, COALESCE(SUM(total_amount), 0) as total_spent')
+            ->first();
+
+        return response()->json([
+            'data' => [
+                'total_orders' => (int) ($stats->total_orders ?? 0),
+                'total_spent' => (float) ($stats->total_spent ?? 0),
+            ],
+        ]);
+    }
+
     public function myOrders(Request $request)
     {
         $user = $request->user();

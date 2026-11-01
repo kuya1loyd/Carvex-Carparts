@@ -3,7 +3,7 @@ import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import productService from '../services/productService';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { ChevronLeft, ShoppingCart, Heart, Share2, CheckCircle, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ShoppingCart, Heart, Share2, CheckCircle, AlertCircle, MessageCircle } from 'lucide-react';
 import { FALLBACK_PRODUCT_IMAGE, resolveProductImage } from '../utils/productImage';
 import PageSkeleton from '../components/Skeleton';
 
@@ -28,7 +28,7 @@ export default function ProductDetail() {
     const { id } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -110,6 +110,16 @@ export default function ProductDetail() {
     const stockCount = normalizeStock(product.stock);
     const hasGallery = Array.isArray(product.images) && product.images.length > 1;
     const backTo = location.pathname.startsWith('/dashboard/') ? '/dashboard/products' : '/products';
+    const isSellerListing = Boolean(product.seller_id);
+    const sellerName = String(product.seller?.name || '').trim();
+    const isOwnSellerListing = isAuthenticated
+        && user?.id !== null
+        && user?.id !== undefined
+        && String(user.id) === String(product.seller_id);
+    const messagesUrl = `/dashboard/messages?product_id=${encodeURIComponent(product.id)}`;
+    const messageSellerUrl = isAuthenticated
+        ? messagesUrl
+        : `/login?redirect=${encodeURIComponent(messagesUrl)}`;
 
     return (
         <div className="product-detail-page">
@@ -189,6 +199,9 @@ export default function ProductDetail() {
 
                             {product.sku && (
                                 <p className="product-sku">SKU: {product.sku}</p>
+                            )}
+                            {sellerName && (
+                                <p className="product-seller"><span>Sold by</span><strong>{sellerName}</strong></p>
                             )}
                         </div>
 
@@ -296,6 +309,13 @@ export default function ProductDetail() {
                                     )}
                                 </button>
 
+                                {isSellerListing && !isOwnSellerListing ? (
+                                    <Link to={messageSellerUrl} className="btn-message-seller">
+                                        <MessageCircle size={17} aria-hidden="true" />
+                                        Message seller
+                                    </Link>
+                                ) : null}
+
                                 <div className="product-support-actions">
                                     <button type="button" className="btn-utility">
                                         <Heart size={17} />
@@ -313,22 +333,22 @@ export default function ProductDetail() {
                             <div className="perk-card">
                                 <CheckCircle size={18} />
                                 <div>
-                                    <strong>Shipping support</strong>
-                                    <p>Free shipping on orders over PHP 1,000.</p>
+                                    <strong>Fitment questions?</strong>
+                                    <p>Contact our team if you need help checking whether a part fits.</p>
                                 </div>
                             </div>
                             <div className="perk-card">
                                 <CheckCircle size={18} />
                                 <div>
-                                    <strong>Easy returns</strong>
-                                    <p>30-day money-back guarantee for eligible items.</p>
+                                    <strong>Catalog availability</strong>
+                                    <p>Stock status shown here comes from the current product listing.</p>
                                 </div>
                             </div>
                             <div className="perk-card">
                                 <CheckCircle size={18} />
                                 <div>
-                                    <strong>Verified stock</strong>
-                                    <p>Authentic products with live stock visibility.</p>
+                                    <strong>Need a hand?</strong>
+                                    <p>Our support team can help you narrow down the right part.</p>
                                 </div>
                             </div>
                         </div>

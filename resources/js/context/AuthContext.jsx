@@ -164,28 +164,26 @@ export const AuthProvider = ({ children }) => {
     // OAuth token-based login (for Google/social auth)
     const loginWithToken = async (token) => {
         try {
-            // Store token immediately
             localStorage.setItem('auth_token', token);
             setToken(token);
 
-            // Try to fetch user profile with the token
-            try {
-                const res = await authService.getProfile({ timeout: 5000 });
-                const mergedUser = mergeUserPayload(res?.data) || res?.data?.user || res?.data;
-                if (mergedUser) {
-                    localStorage.setItem('auth_user', JSON.stringify(mergedUser));
-                    localStorage.setItem('auth_validated_at', String(Date.now()));
-                    setUser(mergedUser);
-                }
-            } catch (profileErr) {
-                // User data will be fetched on next auth check, don't fail
-                console.warn('Could not fetch user profile after OAuth login:', profileErr);
+            const res = await authService.getProfile({ timeout: 5000 });
+            const mergedUser = mergeUserPayload(res?.data) || res?.data?.user || res?.data;
+            if (!mergedUser?.id) {
+                throw new Error('Could not verify the signed-in account.');
             }
 
-            return { token, user };
+            localStorage.setItem('auth_user', JSON.stringify(mergedUser));
+            localStorage.setItem('auth_validated_at', String(Date.now()));
+            setUser(mergedUser);
+
+            return { token, user: mergedUser };
         } catch (error) {
             localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+            localStorage.removeItem('auth_validated_at');
             setToken(null);
+            setUser(null);
             throw error;
         }
     };
@@ -223,6 +221,14 @@ export const AuthProvider = ({ children }) => {
     const updateProfile = async (data) => {
         try {
             const res = await authService.updateProfile(data);
+            if (res.data?.requires_email_verification) {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('auth_user');
+                localStorage.removeItem('auth_validated_at');
+                setToken(null);
+                setUser(null);
+                return res.data;
+            }
             const mergedUser = mergeUserPayload(res.data) || { ...getCachedUser(), ...(res.data?.user || {}) };
             setUser(mergedUser);
             localStorage.setItem('auth_user', JSON.stringify(mergedUser));

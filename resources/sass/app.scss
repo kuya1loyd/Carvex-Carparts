@@ -44,8 +44,10 @@
 @import './pages/orders';
 @import './pages/profile';
 @import './pages/dashboard';
+@import './pages/dashboard-messages';
 @import './pages/seller-listings';
 @import './pages/customer-service';
+@import './pages/customer-portal';
 
 // ==========================================
 // 5. Admin Styles
@@ -60,3 +62,4 @@
 @import './pages/admin/concerns';
 @import './pages/admin/professional-admin';
 @import './pages/admin/activity';
+@import './pages/admin/messages';

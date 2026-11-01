@@ -45,7 +45,7 @@ const cacheEpochByScope = new Map();
 
 const api = axios.create({
     baseURL: API_BASE_URL,
-    timeout: 8000,
+    timeout: 25000,
     headers: {
         'Content-Type': 'application/json',
     },

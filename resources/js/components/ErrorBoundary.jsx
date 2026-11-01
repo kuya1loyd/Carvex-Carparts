@@ -10,15 +10,16 @@ export default class ErrorBoundary extends React.Component {
         };
     }
 
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+
     componentDidCatch(error, errorInfo) {
-        // Update state so the next render will show the fallback UI
         this.setState({
             hasError: true,
             error: error,
             errorInfo: errorInfo
         });
-        
-        // Log error to console for debugging
         console.error('Error caught by Error Boundary:', error, errorInfo);
     }
 
@@ -26,40 +27,48 @@ export default class ErrorBoundary extends React.Component {
         if (this.state.hasError) {
             return (
                 <div style={{
-                    padding: '20px',
-                    margin: '20px',
-                    background: '#fdede6',
-                    border: '2px solid #f87171',
-                    borderRadius: '8px',
-                    fontFamily: 'Arial, sans-serif',
-                    color: '#dc2626'
+                    padding: '24px',
+                    margin: '20px auto',
+                    maxWidth: '800px',
+                    background: '#fef2f2',
+                    border: '2px solid #ef4444',
+                    borderRadius: '12px',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    color: '#991b1b',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
                 }}>
-                    <h1>Application Error</h1>
-                    <p><strong>Something went wrong:</strong></p>
-                    <pre style={{
-                        background: '#fff7f5',
-                        padding: '10px',
-                        borderRadius: '4px',
-                        overflow: 'auto',
-                        fontSize: '12px'
-                    }}>
-                        {this.state.error && this.state.error.toString()}
-                    </pre>
-                    <details style={{ marginTop: '10px', fontSize: '12px' }}>
-                        <summary>Error Details</summary>
-                        <pre style={{
-                            background: '#fff7f5',
-                            padding: '10px',
-                            borderRadius: '4px',
-                            overflow: 'auto',
-                            marginTop: '10px'
-                        }}>
-                            {this.state.errorInfo && this.state.errorInfo.componentStack}
-                        </pre>
-                    </details>
-                    <p style={{ marginTop: '15px', fontSize: '14px' }}>
-                        <strong>Check the browser console (F12) for more details.</strong>
+                    <h2 style={{ margin: '0 0 10px', fontSize: '20px', color: '#b91c1c' }}>CarVex Application Error</h2>
+                    <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#4b5563' }}>
+                        A client-side error occurred while rendering the page:
                     </p>
+                    <pre style={{
+                        background: '#ffffff',
+                        padding: '12px',
+                        borderRadius: '6px',
+                        border: '1px solid #fecaca',
+                        overflow: 'auto',
+                        fontSize: '13px',
+                        color: '#b91c1c',
+                        fontFamily: 'monospace'
+                    }}>
+                        {this.state.error && (this.state.error.stack || this.state.error.toString())}
+                    </pre>
+                    <button
+                        type="button"
+                        onClick={() => window.location.reload()}
+                        style={{
+                            marginTop: '16px',
+                            padding: '8px 16px',
+                            background: '#dc2626',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Reload Page
+                    </button>
                 </div>
             );
         }

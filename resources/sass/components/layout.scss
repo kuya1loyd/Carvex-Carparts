@@ -11,11 +11,12 @@
 }
 
 main {
-    background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    background: #ffffff;
     color: $text-primary;
 }
 
 html,
 body {
+    background: #ffffff;
     overflow-x: clip;
 }

@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmailContract
 {
-    use HasFactory, Notifiable;
+    use HasFactory, MustVerifyEmailTrait, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -31,6 +32,9 @@ class User extends Authenticatable
         'payment_method',
         'city',
         'region',
+        'region_code',
+        'province',
+        'barangay',
         'postal_code',
         'is_active',
     ];
@@ -53,6 +57,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
+        'auth_token_version' => 'integer',
     ];
 
     /**
@@ -97,6 +102,21 @@ class User extends Authenticatable
     public function activityLogs()
     {
         return $this->hasMany(UserActivityLog::class);
+    }
+
+    public function conversationsAsParticipantOne()
+    {
+        return $this->hasMany(Conversation::class, 'participant_one_id');
+    }
+
+    public function conversationsAsParticipantTwo()
+    {
+        return $this->hasMany(Conversation::class, 'participant_two_id');
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
     }
 
 }

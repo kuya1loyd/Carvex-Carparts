@@ -1,9 +1,29 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, Package, Heart, Wallet, ShoppingCart, Search, Store, MessageSquare, Menu, X, Bell, CheckCircle, Tag } from 'lucide-react';
+import {
+    LayoutDashboard,
+    Package,
+    Heart,
+    ShoppingCart,
+    Search,
+    Store,
+    Headphones,
+    MessageCircle,
+    Menu,
+    X,
+    Bell,
+    CheckCircle,
+    Tag,
+    User,
+    LogOut,
+    Shield,    ChevronDown,
+    ArrowUpRight
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import notificationService from '../services/notificationService';
+import LogoutModal from './LogoutModal';
+import messageService from '../services/messageService';
 
 const notificationDateFormatter = new Intl.DateTimeFormat('en-PH', {
     dateStyle: 'medium',
@@ -11,20 +31,14 @@ const notificationDateFormatter = new Intl.DateTimeFormat('en-PH', {
 });
 
 const formatNotificationTime = (value) => {
-    if (!value) {
-        return 'Just now';
-    }
-
+    if (!value) return 'Just now';
     const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-        return 'Just now';
-    }
-
+    if (Number.isNaN(parsed.getTime())) return 'Just now';
     return notificationDateFormatter.format(parsed);
 };
 
 export default function CustomerDashboardLayout() {
-    const { user, logout } = useAuth();
+    const { user, logout, isAdmin } = useAuth();
     const { cartCount } = useCart();
     const navigate = useNavigate();
     const location = useLocation();
@@ -34,31 +48,58 @@ export default function CustomerDashboardLayout() {
     const [notifications, setNotifications] = useState([]);
     const [notificationLoading, setNotificationLoading] = useState(false);
     const [markingAllNotifications, setMarkingAllNotifications] = useState(false);
-    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+    const [unreadNotificationCount, setUnreadNotificationCount] = useState(() => {
+        try {
+            return Number(sessionStorage.getItem('carvex_unread_notif_count') || 0);
+        } catch {
+            return 0;
+        }
+    });
+    const [unreadMessageCount, setUnreadMessageCount] = useState(() => {
+        try {
+            return Number(sessionStorage.getItem('carvex_unread_msg_count') || 0);
+        } catch {
+            return 0;
+        }
+    });
     const [activeNotification, setActiveNotification] = useState(null);
     const [copiedPromoCode, setCopiedPromoCode] = useState('');
+    const [purchasesDropdownOpen, setPurchasesDropdownOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const profileMenuRef = useRef(null);
-    const mobileNavRef = useRef(null);
     const notificationMenuRef = useRef(null);
-    const isAdminUser = String(user?.role || '').toLowerCase().trim() === 'admin';
+    const purchasesMenuRef = useRef(null);
 
-    const handleLogout = async () => {
-        if (window.confirm('Are you sure you want to logout?')) {
+    const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+    const [logoutLoading, setLogoutLoading] = useState(false);
+
+    const handleLogoutClick = () => {
+        setMenuOpen(false);
+        setMobileNavOpen(false);
+        setLogoutModalOpen(true);
+    };
+
+    const handleConfirmLogout = async () => {
+        setLogoutLoading(true);
+        try {
             await logout();
+        } finally {
             window.location.href = '/';
         }
     };
 
-    const navItems = [
-        { to: '/dashboard', label: 'Dashboard', icon: User, end: true },
-        { to: '/dashboard/products', label: 'Products', icon: Store },
+    // My Purchases dropdown grouping (My Purchases, My Listings, My Wishlist)
+    const purchasesItems = [
+        { to: '/dashboard/orders', label: 'My Purchases', icon: Package },
         { to: '/dashboard/listings', label: 'My Listings', icon: Tag },
-        { to: '/dashboard/orders', label: 'My Purchase', icon: Package },
-        { to: '/dashboard/support', label: 'Support', icon: MessageSquare },
         { to: '/dashboard/wishlist', label: 'My Wishlist', icon: Heart },
-        { to: '/dashboard/wallet', label: 'Carvex Wallet', icon: Wallet },
     ];
+
+    const isPurchasesActive = [
+        '/dashboard/orders',
+        '/dashboard/listings',
+        '/dashboard/wishlist',
+    ].some((path) => location.pathname === path || location.pathname.startsWith(path + '/'));
 
     const handleSearchSubmit = (event) => {
         event.preventDefault();
@@ -67,53 +108,54 @@ export default function CustomerDashboardLayout() {
     };
 
     const loadNotifications = async ({ silent = false } = {}) => {
-        if (!user || isAdminUser) {
+        if (!user || isAdmin) {
             return;
         }
 
         try {
-            if (!silent) {
-                setNotificationLoading(true);
-            }
-
+            if (!silent) setNotificationLoading(true);
             const res = await notificationService.getNotifications({ limit: 8 });
             const payload = res.data?.data || {};
             setNotifications(Array.isArray(payload.notifications) ? payload.notifications : []);
-            setUnreadNotificationCount(Number(payload.unread_count || 0));
+            const unread = Number(payload.unread_count || 0);
+            setUnreadNotificationCount(unread);
+            try { sessionStorage.setItem('carvex_unread_notif_count', String(unread)); } catch {}
         } catch (error) {
             console.error('Failed to load notifications:', error);
         } finally {
-            if (!silent) {
-                setNotificationLoading(false);
-            }
+            if (!silent) setNotificationLoading(false);
+        }
+    };
+
+    const loadUnreadMessages = async () => {
+        if (!user || isAdmin) {
+            return;
+        }
+
+        try {
+            const res = await messageService.getUnreadCount();
+            const unread = Number(res.data?.unread_count || 0);
+            setUnreadMessageCount(unread);
+            try { sessionStorage.setItem('carvex_unread_msg_count', String(unread)); } catch {}
+        } catch (error) {
+            // Silently ignore background polling errors
         }
     };
 
     const markNotificationAsReadLocally = (notificationId) => {
         let unreadWasRemoved = false;
-
         setNotifications((prev) => prev.map((item) => {
-            if (item.id !== notificationId || item.read_at) {
-                return item;
-            }
-
+            if (item.id !== notificationId || item.read_at) return item;
             unreadWasRemoved = true;
-            return {
-                ...item,
-                read_at: new Date().toISOString(),
-            };
+            return { ...item, read_at: new Date().toISOString() };
         }));
-
         if (unreadWasRemoved) {
             setUnreadNotificationCount((prev) => Math.max(0, prev - 1));
         }
     };
 
     const handleOpenNotification = async (notification) => {
-        if (!notification) {
-            return;
-        }
-
+        if (!notification) return;
         try {
             if (!notification.read_at) {
                 markNotificationAsReadLocally(notification.id);
@@ -134,10 +176,7 @@ export default function CustomerDashboardLayout() {
     };
 
     const handleOpenNotificationDestination = () => {
-        if (!activeNotification) {
-            return;
-        }
-
+        if (!activeNotification) return;
         const targetLink = String(activeNotification.link || '').trim() || '/dashboard/support';
         handleCloseNotificationModal();
         navigate(targetLink);
@@ -145,10 +184,7 @@ export default function CustomerDashboardLayout() {
 
     const handleCopyPromoCode = async () => {
         const promoCode = String(activeNotification?.promo_code || '').trim();
-        if (!promoCode) {
-            return;
-        }
-
+        if (!promoCode) return;
         try {
             if (navigator?.clipboard?.writeText) {
                 await navigator.clipboard.writeText(promoCode);
@@ -184,10 +220,7 @@ export default function CustomerDashboardLayout() {
     };
 
     const handleMarkAllNotificationsRead = async () => {
-        if (markingAllNotifications || unreadNotificationCount === 0) {
-            return;
-        }
-
+        if (markingAllNotifications || unreadNotificationCount === 0) return;
         try {
             setMarkingAllNotifications(true);
             await notificationService.markAllAsRead();
@@ -200,572 +233,540 @@ export default function CustomerDashboardLayout() {
         }
     };
 
-    useEffect(() => {
-        if (!menuOpen) {
-            return undefined;
+    const handleNavLinkClick = (targetPath) => {
+        if (location.pathname === targetPath) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+        setMobileNavOpen(false);
+        setMenuOpen(false);
+        setNotificationOpen(false);
+        setPurchasesDropdownOpen(false);
+    };
 
-        const handleClickOutside = (event) => {
-            if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+    useEffect(() => {
+        if (!menuOpen && !notificationOpen && !purchasesDropdownOpen) return undefined;
+
+        const handleOutsideClick = (event) => {
+            if (menuOpen && profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
                 setMenuOpen(false);
             }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [menuOpen]);
-
-    useEffect(() => {
-        if (!notificationOpen) {
-            return undefined;
-        }
-
-        const handleClickOutside = (event) => {
-            if (notificationMenuRef.current && !notificationMenuRef.current.contains(event.target)) {
+            if (notificationOpen && notificationMenuRef.current && !notificationMenuRef.current.contains(event.target)) {
                 setNotificationOpen(false);
             }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [notificationOpen]);
-
-    useEffect(() => {
-        if (!activeNotification) {
-            return undefined;
-        }
-
-        const handleKeyDown = (event) => {
-            if (event.key === 'Escape') {
-                handleCloseNotificationModal();
+            if (purchasesDropdownOpen && purchasesMenuRef.current && !purchasesMenuRef.current.contains(event.target)) {
+                setPurchasesDropdownOpen(false);
             }
         };
 
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [activeNotification]);
+        const timer = setTimeout(() => {
+            document.addEventListener('click', handleOutsideClick);
+        }, 10);
 
-    // Close mobile nav when clicking outside
-    useEffect(() => {
-        if (!mobileNavOpen) {
-            return undefined;
-        }
-
-        const handleClickOutside = (event) => {
-            if (mobileNavRef.current && !mobileNavRef.current.contains(event.target)) {
-                setMobileNavOpen(false);
-            }
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('click', handleOutsideClick);
         };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [mobileNavOpen]);
+    }, [menuOpen, notificationOpen, purchasesDropdownOpen]);
 
     useEffect(() => {
         setMenuOpen(false);
         setNotificationOpen(false);
         setMobileNavOpen(false);
+        setPurchasesDropdownOpen(false);
     }, [location.pathname, location.search]);
 
     useEffect(() => {
-        if (!user || isAdminUser) {
+        if (!user || isAdmin) {
             setNotifications([]);
             setUnreadNotificationCount(0);
+            setUnreadMessageCount(0);
             return undefined;
         }
-
         loadNotifications();
-
+        loadUnreadMessages();
         const intervalId = window.setInterval(() => {
             loadNotifications({ silent: true });
+            loadUnreadMessages();
         }, 30000);
+        return () => window.clearInterval(intervalId);
+    }, [user?.id, isAdmin]);
 
-        const handleFocus = () => {
-            loadNotifications({ silent: true });
-        };
-
-        const handleNotificationRefresh = () => {
-            loadNotifications({ silent: true });
-        };
-
-        window.addEventListener('focus', handleFocus);
-        window.addEventListener('customer-notifications-refresh', handleNotificationRefresh);
-
-        return () => {
-            window.clearInterval(intervalId);
-            window.removeEventListener('focus', handleFocus);
-            window.removeEventListener('customer-notifications-refresh', handleNotificationRefresh);
-        };
-    }, [user?.id, isAdminUser]);
+    const avatarUrl = useMemo(() => {
+        const val = String(user?.avatar_url || '').trim();
+        return val ? val : '';
+    }, [user?.avatar_url]);
 
     return (
-        <>
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f5f5f5' }}>
-            {/* Top Navbar */}
-            <header style={{
-                background: '#ffffff',
-                borderBottom: '1px solid #e5e7eb',
-                padding: '0 2rem',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                position: 'sticky',
-                top: 0,
-                zIndex: 100
-            }}>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    height: '64px',
-                    maxWidth: '1400px',
-                    margin: '0 auto'
-                }}>
-                    {/* Logo */}
-                    <Link to="/" style={{ textDecoration: 'none' }}>
-                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ff6b35' }}>carvex</span>
-                    </Link>
-
-                    {/* Hamburger Menu Button (Mobile) */}
-                    <button
-                        type="button"
-                        aria-label={mobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
-                        onClick={() => setMobileNavOpen(!mobileNavOpen)}
-                        style={{
-                            display: 'none',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '0.5rem',
-                            color: '#374151'
-                        }}
-                        className="hamburger-btn"
-                    >
-                        {mobileNavOpen ? <X size={24} /> : <Menu size={24} />}
-                    </button>
-
-                    {/* Desktop Navigation */}
-                    <nav className="desktop-nav" style={{ display: 'flex', gap: '1.5rem' }}>
-                        {navItems.map((item) => (
-                            <NavLink
-                                key={`${item.to}-${item.label}`}
-                                to={item.to}
-                                end={item.end}
-                                style={({ isActive }) => ({
-                                    padding: '0.5rem 0.75rem',
-                                    borderRadius: '8px',
-                                    textDecoration: 'none',
-                                    color: isActive ? '#ff6b35' : '#374151',
-                                    fontWeight: 600,
-                                    fontSize: '0.85rem',
-                                    background: isActive ? '#fff1eb' : 'transparent',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.4rem',
-                                    whiteSpace: 'nowrap'
-                                })}
-                            >
-                                {({ isActive }) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <>
-                                            <Icon size={16} />
-                                            <span>{item.label}</span>
-                                        </>
-                                    );
-                                }}
-                            </NavLink>
-                        ))}
-                    </nav>
-
-                    {/* Right side: Search, Cart, Profile */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <form onSubmit={handleSearchSubmit} style={{ display: 'flex' }}>
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(event) => setSearchQuery(event.target.value)}
-                            placeholder="Search..."
-                            style={{
-                                padding: '0.4rem 0.75rem',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '6px',
-                                fontSize: '0.8rem',
-                                width: '140px'
-                            }}
-                        />
+        <div className="customer-portal-root customer-portal-root--navbar">
+            {/* Top Customer Navbar */}
+            <header className="customer-portal-navbar">
+                <div className="customer-portal-navbar__inner">
+                    {/* Brand & Mobile Toggle */}
+                    <div className="customer-portal-navbar__brand-wrap">
                         <button
-                            type="submit"
-                            aria-label="Search dashboard products"
-                            style={{
-                                background: '#ff6b35',
-                                color: 'white',
-                                border: 'none',
-                                padding: '0.4rem 0.6rem',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                marginLeft: '0.3rem'
-                            }}
+                            type="button"
+                            className="customer-portal-mobile-toggle"
+                            onClick={() => setMobileNavOpen(!mobileNavOpen)}
+                            aria-label="Toggle navigation menu"
                         >
-                            <Search size={16} />
+                            {mobileNavOpen ? <X size={22} /> : <Menu size={22} />}
                         </button>
-                    </form>
-
-                    <div className="customer-cart-menu">
-                        <Link
-                            to="/dashboard/cart"
-                            className="customer-panel-icon-link"
-                            aria-label="Open cart"
-                        >
-                            <ShoppingCart size={22} />
-                            {cartCount > 0 && (
-                                <span className="customer-panel-cart-count">
-                                    {cartCount > 99 ? '99+' : cartCount}
-                                </span>
-                            )}
+                        <Link to="/dashboard" className="customer-portal-brand" aria-label="CarVex Dashboard">
+                            <span className="customer-portal-brand-image-wrap">
+                                <img src="/images/carvex.png" alt="" className="customer-portal-brand-img" />
+                            </span>
+                            <div className="customer-portal-brand-text">
+                                <strong>CarVex</strong>
+                                <small>Customer Portal</small>
+                            </div>
                         </Link>
                     </div>
 
-                    <div ref={notificationMenuRef} className="customer-notification-menu">
-                        <button
-                            type="button"
-                            className="customer-panel-icon-link"
-                            aria-label="Open notifications"
-                            onClick={() => {
-                                setNotificationOpen((prev) => !prev);
-                                if (!notificationOpen) {
-                                    loadNotifications({ silent: true });
-                                }
-                            }}
+                    {/* Desktop Horizontal Navigation Links */}
+                    <nav className="customer-portal-navbar__links" aria-label="Customer portal main navigation">
+                        <NavLink
+                            to="/dashboard"
+                            end
+                            onClick={() => handleNavLinkClick('/dashboard')}
+                            className={({ isActive }) => `customer-portal-nav-pill${isActive ? ' is-active' : ''}`}
                         >
-                            <Bell size={20} />
-                            {unreadNotificationCount > 0 ? (
-                                <span className="customer-panel-cart-count">
-                                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                                </span>
-                            ) : null}
-                        </button>
+                            <LayoutDashboard size={18} />
+                            <span>Dashboard</span>
+                        </NavLink>
 
-                        {notificationOpen ? (
-                            <div className="customer-notification-dropdown">
-                                <div className="customer-notification-dropdown__header">
-                                    <strong>Notifications</strong>
-                                    <span>{unreadNotificationCount > 0 ? `${unreadNotificationCount} unread` : 'All caught up'}</span>
+                        <NavLink
+                            to="/dashboard/products"
+                            onClick={() => handleNavLinkClick('/dashboard/products')}
+                            className={({ isActive }) => `customer-portal-nav-pill${isActive ? ' is-active' : ''}`}
+                        >
+                            <Store size={18} />
+                            <span>Browse Parts</span>
+                        </NavLink>
+
+                        {/* My Purchases Dropdown (Includes My Purchases, My Listings, My Wishlist) */}
+                        <div
+                            ref={purchasesMenuRef}
+                            className={`customer-nav-dropdown-wrap${purchasesDropdownOpen ? ' is-open' : ''}`}
+                            onMouseEnter={() => setPurchasesDropdownOpen(true)}
+                            onMouseLeave={() => setPurchasesDropdownOpen(false)}
+                        >
+                            <button
+                                type="button"
+                                className={`customer-portal-nav-pill customer-portal-nav-pill--dropdown${isPurchasesActive ? ' is-active' : ''}`}
+                                onClick={() => setPurchasesDropdownOpen((prev) => !prev)}
+                                aria-expanded={purchasesDropdownOpen}
+                                aria-haspopup="true"
+                            >
+                                <Package size={18} />
+                                <span>My Purchases</span>
+                                <ChevronDown size={15} className={`customer-nav-chevron${purchasesDropdownOpen ? ' is-rotated' : ''}`} />
+                            </button>
+
+                            {purchasesDropdownOpen && (
+                                <div className="customer-nav-dropdown-menu" role="menu">
+                                    {purchasesItems.map((item) => {
+                                        const ItemIcon = item.icon;
+                                        return (
+                                            <NavLink
+                                                key={item.to}
+                                                to={item.to}
+                                                className={({ isActive }) => `customer-nav-dropdown-item${isActive ? ' is-active' : ''}`}
+                                                onClick={() => handleNavLinkClick(item.to)}
+                                                role="menuitem"
+                                            >
+                                                <span className="customer-nav-dropdown-item__icon">
+                                                    <ItemIcon size={18} />
+                                                </span>
+                                                <span className="customer-nav-dropdown-item__label">{item.label}</span>
+                                            </NavLink>
+                                        );
+                                    })}
                                 </div>
+                            )}
+                        </div>
 
-                                <div className="customer-notification-dropdown__list">
-                                    {notificationLoading && notifications.length === 0 ? (
-                                        <div className="customer-notification-empty" role="status" aria-label="Loading notifications">
-                                            <span className="cv-skeleton-block" style={{ width: '70%', height: 13, marginBottom: 8 }} />
-                                            <span className="cv-skeleton-block" style={{ width: '48%', height: 11 }} />
-                                        </div>
-                                    ) : notifications.length === 0 ? (
-                                        <p className="customer-notification-empty">No notifications yet. Order updates, admin messages, and promo codes will appear here.</p>
-                                    ) : notifications.map((notification) => (
+                        <NavLink
+                            to="/dashboard/support"
+                            onClick={() => handleNavLinkClick('/dashboard/support')}
+                            className={({ isActive }) => `customer-portal-nav-pill${isActive ? ' is-active' : ''}`}
+                        >
+                            <Headphones size={18} />
+                            <span>Support</span>
+                        </NavLink>
+                    </nav>
+
+                    {/* Right-Hand Tools & Profile Actions */}
+                    <div className="customer-portal-navbar__actions">
+                        <form onSubmit={handleSearchSubmit} className="customer-portal-search-compact" role="search">
+                            <Search size={15} className="search-icon" aria-hidden="true" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search parts, orders..."
+                                aria-label="Search catalog"
+                            />
+                        </form>
+
+                        {/* Switch to Admin (if user is admin) */}
+                        {isAdmin && (
+                            <Link
+                                to="/admin/dashboard"
+                                className="customer-portal-admin-switcher"
+                                title="Switch to Admin Panel"
+                            >
+                                <Shield size={14} />
+                                <span>Admin Panel</span>
+                            </Link>
+                        )}
+
+                        {/* Cart */}
+                        <Link to="/dashboard/cart" className="customer-portal-icon-btn" title="View Cart">
+                            <ShoppingCart size={19} aria-hidden="true" />
+                            {cartCount > 0 && (
+                                <span className="customer-portal-badge">{cartCount > 99 ? '99+' : cartCount}</span>
+                            )}
+                        </Link>
+
+                        {/* Notifications with prominent badge */}
+                        <div ref={notificationMenuRef} className="customer-portal-notif-wrap">
+                            <button
+                                type="button"
+                                className="customer-portal-icon-btn"
+                                onClick={() => {
+                                    setNotificationOpen((prev) => !prev);
+                                    if (!notificationOpen) loadNotifications({ silent: true });
+                                }}
+                                title={unreadNotificationCount > 0 ? `${unreadNotificationCount} unread notification(s)` : 'Notifications'}
+                                aria-label="Notifications"
+                            >
+                                <Bell size={19} aria-hidden="true" />
+                                {unreadNotificationCount > 0 && (
+                                    <span className="customer-portal-badge" aria-label={`${unreadNotificationCount} notifications`}>
+                                        {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {notificationOpen && (
+                                <div className="customer-notification-dropdown">
+                                    <div className="customer-notification-dropdown__header">
+                                        <strong>Notifications</strong>
+                                        <span>{unreadNotificationCount > 0 ? `${unreadNotificationCount} unread` : 'All caught up'}</span>
+                                    </div>
+                                    <div className="customer-notification-dropdown__list">
+                                        {notificationLoading && notifications.length === 0 ? (
+                                            <div className="customer-notification-empty">Loading notifications...</div>
+                                        ) : notifications.length === 0 ? (
+                                            <p className="customer-notification-empty">No notifications yet.</p>
+                                        ) : (
+                                            notifications.map((notification) => (
+                                                <button
+                                                    key={notification.id}
+                                                    type="button"
+                                                    className={`customer-notification-item${notification.read_at ? '' : ' is-unread'}`}
+                                                    onClick={() => handleOpenNotification(notification)}
+                                                >
+                                                    <div className="customer-notification-item__meta">
+                                                        <strong>{notification.title || 'Notification'}</strong>
+                                                        {!notification.read_at && <span className="customer-notification-dot" />}
+                                                    </div>
+                                                    <p>{notification.message}</p>
+                                                    <time>{formatNotificationTime(notification.created_at)}</time>
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                    <div className="customer-notification-dropdown__footer">
+                                        <Link to="/dashboard/support" onClick={() => setNotificationOpen(false)}>
+                                            Open support
+                                        </Link>
                                         <button
-                                            key={notification.id}
                                             type="button"
-                                            className={`customer-notification-item${notification.read_at ? '' : ' is-unread'}`}
-                                            onClick={() => handleOpenNotification(notification)}
+                                            onClick={handleMarkAllNotificationsRead}
+                                            disabled={markingAllNotifications || unreadNotificationCount === 0}
                                         >
-                                            <div className="customer-notification-item__meta">
-                                                <strong>{notification.title || 'Notification'}</strong>
-                                                {notification.read_at ? null : <span className="customer-notification-dot" />}
-                                            </div>
-                                            <p>{notification.message || 'Open this notification to view the latest update.'}</p>
-                                            <time>{formatNotificationTime(notification.created_at)}</time>
+                                            {markingAllNotifications ? 'Updating...' : 'Mark all read'}
                                         </button>
-                                    ))}
+                                    </div>
                                 </div>
+                            )}
+                        </div>
 
-                                <div className="customer-notification-dropdown__footer">
-                                    <Link to="/dashboard/support" onClick={() => setNotificationOpen(false)}>
-                                        Open support inbox
+                        {/* Profile Dropdown: Includes Profile Settings, Messages (with badge), and Logout */}
+                        <div ref={profileMenuRef} className="customer-portal-profile-wrap">
+                            <button
+                                type="button"
+                                className="customer-portal-profile-trigger"
+                                onClick={() => setMenuOpen(!menuOpen)}
+                                aria-label="Account menu"
+                            >
+                                <span className="customer-portal-avatar-thumb">
+                                    {avatarUrl ? <img src={avatarUrl} alt="" /> : <User size={16} />}
+                                    {unreadMessageCount > 0 && (
+                                        <span className="customer-portal-avatar-badge" title={`${unreadMessageCount} new message(s)`} />
+                                    )}
+                                </span>
+                                <span className="customer-portal-username">{user?.name?.split(' ')[0] || 'Account'}</span>
+                                {unreadMessageCount > 0 && (
+                                    <span className="customer-portal-badge customer-portal-badge--small" title={`${unreadMessageCount} new message(s)`}>
+                                        {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {menuOpen && (
+                                <div className="customer-profile-dropdown" style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    right: 0,
+                                    marginTop: '0.5rem',
+                                    background: 'white',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '10px',
+                                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                                    minWidth: '190px',
+                                    padding: '0.4rem 0',
+                                    zIndex: 1000
+                                }}>
+                                    <Link to="/dashboard/profile" className="customer-profile-dropdown-link" onClick={() => setMenuOpen(false)}>
+                                        <User size={15} style={{ marginRight: '8px', opacity: 0.7 }} />
+                                        <span>Profile Settings</span>
                                     </Link>
+                                    <Link to="/dashboard/messages" className="customer-profile-dropdown-link customer-profile-dropdown-link--messages" onClick={() => setMenuOpen(false)}>
+                                        <MessageCircle size={15} style={{ marginRight: '8px', opacity: 0.7 }} />
+                                        <span>Messages</span>
+                                        {unreadMessageCount > 0 && (
+                                            <span className="customer-profile-badge">
+                                                {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                                            </span>
+                                        )}
+                                    </Link>
+                                    <a href="/" target="_blank" rel="noopener noreferrer" className="customer-profile-dropdown-link" onClick={() => setMenuOpen(false)}>
+                                        <Store size={15} style={{ marginRight: '8px', opacity: 0.7 }} />
+                                        <span>Browse Public Store</span>
+                                        <ArrowUpRight size={14} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                                    </a>
                                     <button
                                         type="button"
-                                        onClick={handleMarkAllNotificationsRead}
-                                        disabled={markingAllNotifications || unreadNotificationCount === 0}
+                                        className="customer-profile-dropdown-link customer-profile-dropdown-link--danger"
+                                        onClick={handleLogoutClick}
                                     >
-                                        {markingAllNotifications ? 'Updating...' : 'Mark all read'}
+                                        <LogOut size={14} style={{ marginRight: '8px' }} />
+                                        <span>Logout</span>
                                     </button>
                                 </div>
-                            </div>
-                        ) : null}
-                    </div>
-
-                    <div ref={profileMenuRef} style={{ position: 'relative' }}>
-                        <ProfileTrigger user={user} onClick={() => setMenuOpen(!menuOpen)} />
-
-                        {menuOpen && (
-                            <div style={{
-                                position: 'absolute',
-                                top: '100%',
-                                right: 0,
-                                marginTop: '0.5rem',
-                                background: 'white',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '8px',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                                minWidth: '150px',
-                                zIndex: 1000
-                            }}>
-                                <Link
-                                    to="/dashboard/profile"
-                                    style={{
-                                        display: 'block',
-                                        padding: '0.75rem 1rem',
-                                        textDecoration: 'none',
-                                        color: '#374151',
-                                        cursor: 'pointer'
-                                    }}
-                                    onClick={() => setMenuOpen(false)}
-                                >
-                                    Profile
-                                </Link>
-                                <button
-                                    type="button"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem 1rem',
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#dc2626',
-                                        cursor: 'pointer',
-                                        textAlign: 'left'
-                                    }}
-                                    onClick={handleLogout}
-                                >
-                                    Logout
-                                </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Mobile Navigation Dropdown */}
-            {mobileNavOpen && (
-                <div
-                    ref={mobileNavRef}
-                    style={{
-                        display: 'none',
-                        position: 'absolute',
-                        top: '64px',
-                        left: 0,
-                        right: 0,
-                        background: '#ffffff',
-                        borderBottom: '1px solid #e5e7eb',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                        zIndex: 99,
-                        padding: '1rem'
-                    }}
-                    className="mobile-nav-dropdown"
-                >
-                    <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {navItems.map((item) => (
-                            <NavLink
-                                key={`mobile-${item.to}-${item.label}`}
-                                to={item.to}
-                                end={item.end}
-                                onClick={() => setMobileNavOpen(false)}
-                                style={({ isActive }) => ({
-                                    padding: '0.75rem 1rem',
-                                    borderRadius: '8px',
-                                    textDecoration: 'none',
-                                    color: isActive ? '#ff6b35' : '#374151',
-                                    fontWeight: 600,
-                                    fontSize: '0.9rem',
-                                    background: isActive ? '#fff1eb' : 'transparent',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem'
-                                })}
-                            >
-                                {({ isActive }) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <>
-                                            <Icon size={20} />
-                                            <span>{item.label}</span>
-                                        </>
-                                    );
-                                }}
-                            </NavLink>
-                        ))}
-                    </nav>
-                </div>
-            )}
             </header>
 
-            <style>{`
-                @media (max-width: 1024px) {
-                    .hamburger-btn {
-                        display: block !important;
-                    }
-                    .desktop-nav {
-                        display: none !important;
-                    }
-                    .mobile-nav-dropdown {
-                        display: block !important;
-                    }
-                }
-            `}</style>
-
-            {/* Main Content */}
-            <main style={{ flex: 1, padding: '1.5rem 2rem' }}>
-                <Outlet />
-            </main>
-        </div>
-
-        {activeNotification ? (
-            <div className="customer-notification-modal" onClick={handleCloseNotificationModal}>
-                <div
-                    className={`customer-notification-modal__panel customer-notification-modal__panel--${getNotificationModalTone(activeNotification)}`}
-                    onClick={(event) => event.stopPropagation()}
-                >
-                    <div className="customer-notification-modal__header">
-                        <div className="customer-notification-modal__intro">
-                            <span className={`customer-notification-modal__eyebrow customer-notification-modal__eyebrow--${getNotificationModalTone(activeNotification)}`}>
-                                {activeNotification.kind === 'order_success'
-                                    ? 'Successful checkout'
-                                    : activeNotification.kind === 'promo_code'
-                                        ? 'Promo code'
-                                        : 'Notification'}
-                            </span>
-                            <h2>{activeNotification.title || 'Notification'}</h2>
-                            <p>{formatNotificationTime(activeNotification.created_at)}</p>
-                        </div>
-
-                        <button
-                            type="button"
-                            className="customer-notification-modal__close"
-                            onClick={handleCloseNotificationModal}
-                            aria-label="Close notification"
-                        >
-                            <X size={18} />
-                        </button>
-                    </div>
-
-                    <div className="customer-notification-modal__body">
-                        {activeNotification.kind === 'order_success' ? (
-                            <div className="customer-notification-modal__highlight customer-notification-modal__highlight--success">
-                                <CheckCircle size={22} />
-                                <div>
-                                    <strong>{activeNotification.order_number || activeNotification.subject || 'Order received'}</strong>
-                                    <span>Your order was placed successfully and is now in processing.</span>
+            {/* Mobile Drawer Navigation */}
+            {mobileNavOpen && (
+                <>
+                    <div
+                        className="customer-portal-scrim"
+                        onClick={() => setMobileNavOpen(false)}
+                        aria-hidden="true"
+                    />
+                    <aside className="customer-portal-drawer is-open" aria-label="Mobile navigation">
+                        <div className="customer-portal-drawer__header">
+                            <Link to="/dashboard" className="customer-portal-brand" onClick={() => setMobileNavOpen(false)}>
+                                <span className="customer-portal-brand-image-wrap">
+                                    <img src="/images/carvex.png" alt="" className="customer-portal-brand-img" />
+                                </span>
+                                <div className="customer-portal-brand-text">
+                                    <strong>CarVex</strong>
+                                    <small>Customer Portal</small>
                                 </div>
-                            </div>
-                        ) : null}
-
-                        {activeNotification.kind === 'promo_code' ? (
-                            <div className="customer-notification-modal__highlight customer-notification-modal__highlight--promo">
-                                <Tag size={22} />
-                                <div>
-                                    <strong>{activeNotification.promo_code || activeNotification.subject || 'Promo code'}</strong>
-                                    <span>Use this code during checkout to claim your discount.</span>
-                                </div>
-                            </div>
-                        ) : null}
-
-                        <div className="customer-notification-modal__message">
-                            <p>{activeNotification.full_message || activeNotification.message || 'No extra message was included.'}</p>
-                        </div>
-
-                        {activeNotification.promo_code ? (
-                            <div className="customer-notification-modal__promo-card">
-                                <span>Promo code</span>
-                                <strong>{activeNotification.promo_code}</strong>
-                                {activeNotification.expires_at ? (
-                                    <small>Valid until {formatNotificationTime(activeNotification.expires_at)}</small>
-                                ) : null}
-                            </div>
-                        ) : null}
-                    </div>
-
-                    <div className="customer-notification-modal__footer">
-                        {activeNotification.promo_code ? (
+                            </Link>
                             <button
                                 type="button"
-                                className="customer-notification-modal__ghost"
-                                onClick={handleCopyPromoCode}
+                                className="customer-portal-drawer-close"
+                                onClick={() => setMobileNavOpen(false)}
+                                aria-label="Close menu"
                             >
-                                {copiedPromoCode === activeNotification.promo_code ? 'Copied' : 'Copy code'}
+                                <X size={20} />
                             </button>
-                        ) : <span />}
+                        </div>
+
+                        <div className="customer-portal-user-card">
+                            <span className="customer-portal-user-avatar">
+                                {avatarUrl ? <img src={avatarUrl} alt="" /> : <User size={18} />}
+                            </span>
+                            <div className="customer-portal-user-info">
+                                <strong>{user?.name || 'Customer'}</strong>
+                                <small>{user?.email || 'Verified Account'}</small>
+                            </div>
+                        </div>
+
+                        <nav className="customer-portal-drawer__nav">
+                            <NavLink
+                                to="/dashboard"
+                                end
+                                onClick={() => setMobileNavOpen(false)}
+                                className={({ isActive }) => `customer-portal-drawer-link${isActive ? ' is-active' : ''}`}
+                            >
+                                <LayoutDashboard size={20} />
+                                <span>Dashboard</span>
+                            </NavLink>
+
+                            <NavLink
+                                to="/dashboard/products"
+                                onClick={() => setMobileNavOpen(false)}
+                                className={({ isActive }) => `customer-portal-drawer-link${isActive ? ' is-active' : ''}`}
+                            >
+                                <Store size={20} />
+                                <span>Browse Parts</span>
+                            </NavLink>
+
+                            <div className="customer-portal-drawer__section-title">
+                                <span>Purchases & Activity</span>
+                            </div>
+
+                            <NavLink
+                                to="/dashboard/orders"
+                                onClick={() => setMobileNavOpen(false)}
+                                className={({ isActive }) => `customer-portal-drawer-link${isActive ? ' is-active' : ''}`}
+                            >
+                                <Package size={20} />
+                                <span>My Purchases</span>
+                            </NavLink>
+
+                            <NavLink
+                                to="/dashboard/listings"
+                                onClick={() => setMobileNavOpen(false)}
+                                className={({ isActive }) => `customer-portal-drawer-link${isActive ? ' is-active' : ''}`}
+                            >
+                                <Tag size={20} />
+                                <span>My Listings</span>
+                            </NavLink>
+
+                            <NavLink
+                                to="/dashboard/wishlist"
+                                onClick={() => setMobileNavOpen(false)}
+                                className={({ isActive }) => `customer-portal-drawer-link${isActive ? ' is-active' : ''}`}
+                            >
+                                <Heart size={20} />
+                                <span>My Wishlist</span>
+                            </NavLink>
+
+                            <div className="customer-portal-drawer__section-title">
+                                <span>Help & Messages</span>
+                            </div>
+
+                            <NavLink
+                                to="/dashboard/support"
+                                onClick={() => setMobileNavOpen(false)}
+                                className={({ isActive }) => `customer-portal-drawer-link${isActive ? ' is-active' : ''}`}
+                            >
+                                <Headphones size={20} />
+                                <span>Support</span>
+                            </NavLink>
+
+                            {/* Messages in Mobile Drawer */}
+                            <NavLink
+                                to="/dashboard/messages"
+                                onClick={() => setMobileNavOpen(false)}
+                                className={({ isActive }) => `customer-portal-drawer-link${isActive ? ' is-active' : ''}`}
+                            >
+                                <MessageCircle size={20} />
+                                <span>Messages</span>
+                                {unreadMessageCount > 0 && (
+                                    <span className="customer-profile-badge" style={{ marginLeft: 'auto' }}>
+                                        {unreadMessageCount}
+                                    </span>
+                                )}
+                            </NavLink>
+                        </nav>
+
+                        <div className="customer-portal-drawer__footer">
+                            <a href="/" target="_blank" rel="noopener noreferrer" className="customer-portal-drawer-store-btn" onClick={() => setMobileNavOpen(false)}>
+                                <Store size={18} />
+                                <span>Browse Public Store</span>
+                                <ArrowUpRight size={16} style={{ marginLeft: 'auto' }} />
+                            </a>
+                            <button type="button" className="customer-portal-logout-btn" onClick={handleLogoutClick}>
+                                <LogOut size={16} />
+                                <span>Log Out</span>
+                            </button>
+                        </div>
+                    </aside>
+                </>
+            )}
+
+            {/* Main Content View with comfortable fit */}
+            <main className="customer-portal-main-content">
+                <div className="customer-portal-content-container">
+                    <Outlet />
+                </div>
+            </main>
+
+            {/* Notification Detail Modal */}
+            {activeNotification && (
+                <div className="customer-notification-modal" onClick={handleCloseNotificationModal}>
+                    <div
+                        className={`customer-notification-modal__panel customer-notification-modal__panel--${getNotificationModalTone(activeNotification)}`}
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="customer-notification-modal__header">
+                            <div className="customer-notification-modal__intro">
+                                <span className={`customer-notification-modal__eyebrow customer-notification-modal__eyebrow--${getNotificationModalTone(activeNotification)}`}>
+                                    {activeNotification.kind === 'order_success'
+                                        ? 'Successful checkout'
+                                        : activeNotification.kind === 'promo_code'
+                                            ? 'Promo code'
+                                            : 'Notification'}
+                                </span>
+                                <h2>{activeNotification.title || 'Notification details'}</h2>
+                                <p>{formatNotificationTime(activeNotification.created_at)}</p>
+                            </div>
+                            <button
+                                type="button"
+                                className="customer-notification-modal__close"
+                                onClick={handleCloseNotificationModal}
+                                aria-label="Close notification"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="customer-notification-modal__body">
+                            <p className="customer-notification-modal__message">{activeNotification.message}</p>
+                            {activeNotification.promo_code && (
+                                <div className="customer-notification-promo-box">
+                                    <span className="customer-notification-promo-box__label">Your Promo Code</span>
+                                    <div className="customer-notification-promo-box__row">
+                                        <code>{activeNotification.promo_code}</code>
+                                        <button type="button" onClick={handleCopyPromoCode}>
+                                            {copiedPromoCode === activeNotification.promo_code ? (
+                                                <><CheckCircle size={15} /> Copied</>
+                                            ) : (
+                                                'Copy'
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         <div className="customer-notification-modal__actions">
-                            <button
-                                type="button"
-                                className="customer-notification-modal__secondary"
-                                onClick={handleCloseNotificationModal}
-                            >
-                                Close
-                            </button>
-                            <button
-                                type="button"
-                                className="customer-notification-modal__primary"
-                                onClick={handleOpenNotificationDestination}
-                            >
+                            <button type="button" className="customer-notification-modal__cta" onClick={handleOpenNotificationDestination}>
                                 {getNotificationActionLabel(activeNotification)}
                             </button>
                         </div>
                     </div>
                 </div>
-            </div>
-        ) : null}
-        </>
-    );
-}
-
-function ProfileTrigger({ user, onClick }) {
-    const avatarUrl = useMemo(() => {
-        const value = String(user?.avatar_url || '').trim();
-        if (!value) return '';
-        const timestamp = user?.avatar_updated_at || Date.now();
-        return value.includes('?') ? `${value}&t=${timestamp}` : `${value}?t=${timestamp}`;
-    }, [user?.avatar_url, user?.avatar_updated_at]);
-
-    return (
-        <button
-            type="button"
-            aria-label={`Open account menu for ${user?.name || 'customer'}`}
-            onClick={onClick}
-            style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '0.25rem'
-            }}
-        >
-            <span style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: '#f3f4f6'
-            }}>
-                {avatarUrl ? (
-                    <img
-                        src={avatarUrl}
-                        alt={user?.name || 'Customer'}
-                        style={{
-                            width: '36px',
-                            height: '36px',
-                            objectFit: 'cover',
-                            borderRadius: '50%'
-                        }}
-                    />
-                ) : (
-                    <User size={20} />
-                )}
-            </span>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>{user?.name || 'Customer'}</span>
-        </button>
+            )}
+        
+            {/* Logout Confirmation Modal with Loading State */}
+            <LogoutModal
+                isOpen={logoutModalOpen}
+                onClose={() => !logoutLoading && setLogoutModalOpen(false)}
+                onConfirm={handleConfirmLogout}
+                isLoading={logoutLoading}
+            />
+        </div>
     );
 }

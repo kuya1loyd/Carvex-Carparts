@@ -9,12 +9,15 @@ import {
     Home,
     LogOut,
     Menu,
+    MessageCircle,
     Package,
     Search,
     Settings,
     ShoppingBag,
     Users,
     X,
+    Store,
+    ArrowUpRight,
 } from 'lucide-react';
 import adminService from '../services/adminService';
 import { preloadAdminRoute, preloadAllAdminRoutes } from '../utils/adminRoutePreload';
@@ -59,6 +62,12 @@ const SECTION_DETAILS = {
         title: 'Support inbox',
         description: 'Stay on top of customer concerns and keep response times under control.',
     },
+    messages: {
+        label: 'Messages',
+        eyebrow: 'Marketplace oversight',
+        title: 'Customer and seller messages',
+        description: 'Review conversations about marketplace listings.',
+    },
     activity: {
         label: 'Activity',
         eyebrow: 'Review queue',
@@ -100,6 +109,7 @@ const getSectionKey = (pathname) => {
     if (pathname.startsWith('/admin/orders')) return 'orders';
     if (pathname.startsWith('/admin/products')) return 'products';
     if (pathname.startsWith('/admin/users')) return 'users';
+    if (pathname.startsWith('/admin/messages')) return 'messages';
     if (pathname.startsWith('/admin/activity')) return 'activity';
     if (pathname.startsWith('/admin/customer-service') || pathname.startsWith('/admin/concerns')) return 'support';
     if (pathname.startsWith('/admin/account')) return 'account';
@@ -152,6 +162,7 @@ export default function AdminLayout() {
         { to: '/admin/orders', label: 'Orders', icon: ShoppingBag, badge: sidebarCounts.orders || null },
         { to: '/admin/products', label: 'Inventory', icon: Package, badge: sidebarCounts.products || null },
         { to: '/admin/users', label: 'Users', icon: Users, badge: sidebarCounts.users || null },
+        { to: '/admin/messages', label: 'Messages', icon: MessageCircle, badge: null },
         { to: '/admin/activity', label: 'Activity', icon: Activity, badge: null },
         { to: '/admin/customer-service', label: 'Support', icon: Headphones, badge: sidebarCounts.newConcerns > 0 ? sidebarCounts.newConcerns : null },
         { to: '/admin/account', label: 'Settings', icon: Settings, badge: null },
@@ -241,6 +252,18 @@ export default function AdminLayout() {
         setProfileDropdownOpen(false);
         setSearchDropdownOpen(false);
     }, [location.pathname]);
+
+    useEffect(() => {
+        const handleEscape = (event) => {
+            if (event.key !== 'Escape') return;
+            setMobileMenuOpen(false);
+            setProfileDropdownOpen(false);
+            setSearchDropdownOpen(false);
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, []);
 
     const handleLogout = async () => {
         if (logoutLoading) {
@@ -375,10 +398,11 @@ export default function AdminLayout() {
                 type="button"
                 className="admin-portal__scrim"
                 aria-label="Close menu"
+                tabIndex={mobileMenuOpen ? 0 : -1}
                 onClick={() => setMobileMenuOpen(false)}
             />
 
-            <aside className="admin-portal__sidebar">
+            <aside id="admin-navigation" className="admin-portal__sidebar" aria-label="Admin workspace">
                 <div className="admin-portal__brand">
                     <Link to="/admin/dashboard" className="admin-portal__brand-link">
                         <span className="admin-portal__brand-mark">C</span>
@@ -417,6 +441,23 @@ export default function AdminLayout() {
                         );
                     })}
                 </nav>
+
+                <div className="admin-portal__sidebar-footer">
+                    <a href="/" className="admin-portal__sidebar-store-link" target="_blank" rel="noopener noreferrer">
+                        <Store size={18} />
+                        <span>Browse Public Store</span>
+                        <ArrowUpRight size={16} className="admin-portal__sidebar-external-icon" />
+                    </a>
+                    <button
+                        type="button"
+                        className="admin-portal__sidebar-logout-btn"
+                        onClick={handleLogout}
+                        disabled={logoutLoading}
+                    >
+                        <LogOut size={16} />
+                        <span>Log Out</span>
+                    </button>
+                </div>
             </aside>
 
             <main className="admin-portal__main">
@@ -427,6 +468,8 @@ export default function AdminLayout() {
                             className="admin-portal__menu-toggle"
                             onClick={() => setMobileMenuOpen((open) => !open)}
                             aria-label={mobileMenuOpen ? 'Close navigation' : 'Open navigation'}
+                            aria-expanded={mobileMenuOpen}
+                            aria-controls="admin-navigation"
                         >
                             {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
                         </button>
@@ -458,6 +501,9 @@ export default function AdminLayout() {
                             <input
                                 type="text"
                                 value={searchQuery}
+                                aria-label="Search orders, products, users, and support"
+                                aria-expanded={searchDropdownOpen}
+                                aria-controls="admin-search-results"
                                 onChange={(event) => handleSearchChange(event.target.value)}
                                 onKeyDown={(event) => {
                                     if (event.key === 'Enter' && searchResults.length > 0) {
@@ -474,7 +520,7 @@ export default function AdminLayout() {
                             />
 
                             {searchDropdownOpen ? (
-                                <div className="admin-portal__search-dropdown">
+                                <div id="admin-search-results" className="admin-portal__search-dropdown" role="region" aria-label="Admin search results">
                                     {searchLoading ? (
                                         <div className="admin-portal__search-state">Searching the admin workspace...</div>
                                     ) : searchResults.length === 0 ? (
@@ -509,7 +555,7 @@ export default function AdminLayout() {
                         <Link
                             to="/admin/customer-service"
                             className="admin-portal__icon-button"
-                            aria-label="Open support inbox"
+                            aria-label={`Open support inbox${sidebarCounts.newConcerns > 0 ? `, ${sidebarCounts.newConcerns} pending concerns` : ''}`}
                         >
                             <Bell size={18} />
                             {sidebarCounts.newConcerns > 0 ? (
@@ -522,6 +568,8 @@ export default function AdminLayout() {
                                 type="button"
                                 className="admin-portal__profile-button"
                                 onClick={() => setProfileDropdownOpen((open) => !open)}
+                                aria-expanded={profileDropdownOpen}
+                                aria-haspopup="true"
                             >
                                 {user?.profile_picture ? (
                                     <img src={user.profile_picture} alt={adminName} className="admin-portal__avatar admin-portal__avatar--image" />

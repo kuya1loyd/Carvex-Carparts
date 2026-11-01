@@ -22,8 +22,17 @@ export const authService = {
             password_confirmation: data.password_confirmation || data.password,
         }, { timeout: 8000, ...config }),
     
-    getSocialAuthUrl: (provider, redirectTo, config) => 
-        api.get(`/auth/oauth-url/${provider}`, { params: { redirect_to: redirectTo }, ...config }),
+    getSocialAuthUrl: (provider, redirectTo, config) =>
+        api.get(`${window.location.origin}/auth/oauth-url/${encodeURIComponent(provider)}`, {
+            params: { redirect_to: redirectTo },
+            ...config,
+        }),
+
+    resendVerification: (credentials, config) =>
+        api.post('/auth/email/resend', credentials, { timeout: 12000, ...config }),
+    
+    checkVerificationStatus: (email, config) =>
+        api.post('/auth/email/status', { email }, { timeout: 8000, ...config }),
     
     logout: (config) => 
         api.post('/auth/logout', {}, config),

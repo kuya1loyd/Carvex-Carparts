@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class Product extends Model
@@ -36,6 +37,15 @@ class Product extends Model
         'is_premium' => 'boolean'
     ];
 
+    public static function bumpCatalogCacheVersion(): void
+    {
+        try {
+            Cache::forever('catalog_cache_version', (int) Cache::get('catalog_cache_version', 1) + 1);
+        } catch (\Throwable $e) {
+            // Ignore cache driver issues
+        }
+    }
+
     protected static function booted()
     {
         static::creating(function (Product $product) {
@@ -43,6 +53,9 @@ class Product extends Model
                 $product->sku = static::generateUniqueSku($product->name);
             }
         });
+
+        static::saved(fn () => static::bumpCatalogCacheVersion());
+        static::deleted(fn () => static::bumpCatalogCacheVersion());
     }
 
     public static function generateUniqueSku(?string $name, ?int $ignoreId = null): string

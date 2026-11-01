@@ -1,21 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     ArrowRight,
-    ArrowUpRight,
-    Disc3,
-    Gauge,
-    Mail,
-    MapPin,
-    Phone,
     Search,
-    Settings2,
-    Wrench,
-    Zap,
+    ShoppingCart,
+    ShieldCheck,
+    Truck,
+    Settings,
+    Headphones,
+    Check,
 } from 'lucide-react';
-import productService from '../services/productService';
-import categoryService from '../services/categoryService';
-import { FALLBACK_PRODUCT_IMAGE, resolveProductImage } from '../utils/productImage';
+import { useCart } from '../context/CartContext';
 
 const currencyFormatter = new Intl.NumberFormat('en-PH', {
     style: 'currency',
@@ -24,467 +19,288 @@ const currencyFormatter = new Intl.NumberFormat('en-PH', {
     maximumFractionDigits: 2,
 });
 
-const fallbackCategories = [
-    { name: 'Brake systems', search: 'brake', note: 'Pads, rotors & more', Icon: Disc3 },
-    { name: 'Engine care', search: 'air filter', note: 'Filters, belts & fluids', Icon: Settings2 },
-    { name: 'Suspension', search: 'shock absorber', note: 'Ride and handling parts', Icon: Gauge },
-    { name: 'Electrical', search: 'alternator', note: 'Power and starting parts', Icon: Zap },
-    { name: 'Workshop essentials', search: 'wiper blade', note: 'Everyday maintenance', Icon: Wrench },
+const POPULAR_SEARCHES = [
+    'Brake Pad',
+    'Oil Filter',
+    'Air Filter',
+    'Shock Absorber',
+    'Alternator',
 ];
 
-const heroSlides = [
-    { src: '/images/Brake%20Rotor%20(Disc).jpg', alt: 'Automotive brake rotor' },
-    { src: '/images/Brake%20pads.jpg', alt: 'Automotive brake pads' },
-    { src: '/images/Air%20Filter.jpg', alt: 'Automotive air filter' },
-    { src: '/images/Alternator.jpg', alt: 'Automotive alternator' },
-    { src: '/images/Shock%20Absorber.jpg', alt: 'Automotive shock absorber' },
-    { src: '/images/Car%20Battery.jpg', alt: 'Automotive car battery' },
+const FEATURED_PRODUCTS = [
+    {
+        id: 1,
+        name: 'Brake Rotor',
+        category: 'Brake System',
+        price: 825.00,
+        image: '/images/Brake Rotor (Disc).jpg',
+        badge: 'Best Seller',
+    },
+    {
+        id: 2,
+        name: 'Oil Filter',
+        category: 'Engine Parts',
+        price: 179.00,
+        image: '/images/oil filter.jpg',
+    },
+    {
+        id: 3,
+        name: 'Car Battery',
+        category: 'Electrical',
+        price: 1950.00,
+        image: '/images/Car Battery.jpg',
+    },
+    {
+        id: 4,
+        name: 'Shock Absorber',
+        category: 'Suspension',
+        price: 2350.00,
+        image: '/images/Shock Absorber.jpg',
+    },
+    {
+        id: 5,
+        name: 'Air Filter',
+        category: 'Air Intake',
+        price: 299.00,
+        image: '/images/Air Filter.jpg',
+    },
+    {
+        id: 6,
+        name: 'Side Mirror',
+        category: 'Body Parts',
+        price: 850.00,
+        image: '/images/Door Lock Protector.jpg',
+    },
+    {
+        id: 7,
+        name: 'Timing Belt Kit',
+        category: 'Timing System',
+        price: 1250.00,
+        image: '/images/Serpentine Belt.jpg',
+    },
+    {
+        id: 8,
+        name: 'Brake Pad',
+        category: 'Brake System',
+        price: 720.00,
+        image: '/images/Brake pads.jpg',
+    },
 ];
-
-const getRecords = (response, collectionName) => {
-    const candidates = [
-        response?.data?.data?.data,
-        response?.data?.data?.[collectionName],
-        response?.data?.[collectionName],
-        response?.data?.data,
-        response?.data,
-        response,
-    ];
-
-    for (const candidate of candidates) {
-        if (Array.isArray(candidate)) {
-            return candidate;
-        }
-
-        if (candidate && typeof candidate === 'object') {
-            const nestedArray = Object.values(candidate).find(Array.isArray);
-            if (nestedArray) {
-                return nestedArray;
-            }
-        }
-    }
-
-    return [];
-};
-
-const toNumberOrNull = (value) => {
-    if (value === null || value === undefined || value === '') {
-        return null;
-    }
-
-    const number = Number(value);
-    return Number.isFinite(number) ? number : null;
-};
-
-const normalizeProduct = (item) => ({
-    id: item?.id,
-    name: String(item?.name || '').trim(),
-    brand: String(item?.brand || item?.manufacturer || '').trim(),
-    price: toNumberOrNull(item?.price ?? item?.selling_price ?? item?.amount),
-    stock: toNumberOrNull(item?.stock ?? item?.quantity ?? item?.inventory),
-    images: item?.images ?? item?.image_url ?? item?.image ?? null,
-});
-
-const normalizeCategory = (item) => ({
-    id: item?.id,
-    name: String(item?.name || '').trim(),
-});
-
-function ProductPhoto({ product }) {
-    const [failed, setFailed] = useState(false);
-    const image = resolveProductImage(product.images);
-    const hasImage = image !== FALLBACK_PRODUCT_IMAGE;
-
-    if (!hasImage || failed) {
-        return (
-            <div className="landing-product-photo-placeholder" aria-label={`No photo available for ${product.name}`}>
-                <span>Photo unavailable</span>
-            </div>
-        );
-    }
-
-    return (
-        <img
-            src={image}
-            alt={product.name}
-            loading="lazy"
-            onError={() => setFailed(true)}
-        />
-    );
-}
-
-function ProductSkeleton() {
-    return (
-        <div className="landing-product-skeleton" aria-hidden="true">
-            {[0, 1, 2].map((item) => (
-                <article className="landing-product-skeleton-card" key={item}>
-                    <div className="skeleton-photo" />
-                    <div className="skeleton-line skeleton-line--short" />
-                    <div className="skeleton-line" />
-                    <div className="skeleton-line skeleton-line--price" />
-                </article>
-            ))}
-        </div>
-    );
-}
 
 export default function Landing() {
-    const location = useLocation();
     const navigate = useNavigate();
+    const cart = useCart();
     const [search, setSearch] = useState('');
-    const [products, setProducts] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [productsLoading, setProductsLoading] = useState(true);
-    const [categoriesLoading, setCategoriesLoading] = useState(true);
-    const [productsError, setProductsError] = useState(false);
-    const [categoriesError, setCategoriesError] = useState(false);
-    const [activeHeroSlide, setActiveHeroSlide] = useState(0);
-    const [carouselImagesReady, setCarouselImagesReady] = useState(false);
-    const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => (
-        typeof window !== 'undefined'
-        && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
-    ));
+    const [addedIds, setAddedIds] = useState([]);
 
-    const loadProducts = useCallback(async () => {
-        setProductsLoading(true);
-        setProductsError(false);
-
-        try {
-            const response = await productService.getAll({
-                per_page: 6,
-                sort_by: 'created_at',
-                sort_order: 'desc',
-            });
-            const records = getRecords(response, 'products')
-                .filter((item) => item && typeof item === 'object')
-                .map(normalizeProduct)
-                .filter((item) => item.id !== null && item.id !== undefined && item.name);
-            setProducts(records);
-        } catch (error) {
-            setProducts([]);
-            setProductsError(true);
-        } finally {
-            setProductsLoading(false);
-        }
-    }, []);
-
-    const loadCategories = useCallback(async () => {
-        setCategoriesLoading(true);
-        setCategoriesError(false);
-
-        try {
-            const response = await categoryService.getAll();
-            const records = getRecords(response, 'categories')
-                .filter((item) => item && typeof item === 'object')
-                .map(normalizeCategory)
-                .filter((item) => item.id !== null && item.id !== undefined && item.name);
-            setCategories(records);
-        } catch (error) {
-            setCategories([]);
-            setCategoriesError(true);
-        } finally {
-            setCategoriesLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        loadProducts();
-        loadCategories();
-    }, [loadProducts, loadCategories]);
-
-    useEffect(() => {
-        let isMounted = true;
-        const imageLoads = heroSlides.map(({ src }) => {
-            const image = new window.Image();
-            image.decoding = 'async';
-            image.src = src;
-            if (image.decode) {
-                return image.decode().catch(() => undefined);
-            }
-
-            return new Promise((resolve) => {
-                image.onload = resolve;
-                image.onerror = resolve;
-            });
-        });
-
-        Promise.all(imageLoads).then(() => {
-            if (isMounted) {
-                setCarouselImagesReady(true);
-            }
-        });
-
-        return () => { isMounted = false; };
-    }, []);
-
-    useEffect(() => {
-        const motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-        if (!motionPreference) {
-            return undefined;
-        }
-
-        const updateMotionPreference = () => setPrefersReducedMotion(motionPreference.matches);
-        updateMotionPreference();
-
-        if (motionPreference.addEventListener) {
-            motionPreference.addEventListener('change', updateMotionPreference);
-            return () => motionPreference.removeEventListener('change', updateMotionPreference);
-        }
-
-        motionPreference.addListener(updateMotionPreference);
-        return () => motionPreference.removeListener(updateMotionPreference);
-    }, []);
-
-    useEffect(() => {
-        if (prefersReducedMotion || !carouselImagesReady) {
-            return undefined;
-        }
-
-        const interval = window.setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                setActiveHeroSlide((current) => (current + 1) % heroSlides.length);
-            }
-        }, 6000);
-
-        return () => window.clearInterval(interval);
-    }, [carouselImagesReady, prefersReducedMotion]);
-
-    useEffect(() => {
-        if (!location.hash) {
-            return undefined;
-        }
-
-        const targetId = location.hash.slice(1);
-        const timer = window.setTimeout(() => {
-            document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 80);
-
-        return () => window.clearTimeout(timer);
-    }, [location.hash]);
-
-    const submitSearch = (event) => {
+    const handleSearch = (event) => {
         event.preventDefault();
-        const query = search.trim();
-        if (query) {
-            navigate(`/products?search=${encodeURIComponent(query)}`);
+        const term = search.trim();
+        navigate(term ? `/products?search=${encodeURIComponent(term)}` : '/products');
+    };
+
+    const handleTagClick = (tag) => {
+        navigate(`/products?search=${encodeURIComponent(tag)}`);
+    };
+
+    const handleAddToCart = async (product, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+            if (typeof cart?.addItem === 'function') {
+                await cart.addItem(product, 1);
+            }
+            setAddedIds((prev) => [...prev, product.id]);
+            setTimeout(() => {
+                setAddedIds((prev) => prev.filter((id) => id !== product.id));
+            }, 1800);
+        } catch {
+            navigate(`/products`);
         }
     };
 
-    const visibleCategories = categories.length > 0 ? categories.slice(0, 5) : fallbackCategories;
-
     return (
-        <div className="landing-page" id="landing-top">
-            <section className="landing-hero" aria-labelledby="landing-hero-title">
-                <div className="landing-hero-inner">
-                    <div className="landing-hero-copy landing-enter">
-                        <p className="landing-eyebrow"><span /> Parts for the road ahead</p>
-                        <h1 id="landing-hero-title">Find the right part.<br /><em>Keep moving.</em></h1>
-                        <p className="landing-hero-description">
-                            Search by part name or browse by vehicle system. Need a hand with fit? Our team can help you narrow it down.
+        <div className="landing-v3-root">
+            {/* HERO SECTION */}
+            <section className="landing-v3-hero">
+                <div className="landing-v3-hero__container">
+                    <div className="landing-v3-hero__content">
+                        <span className="landing-v3-hero__eyebrow">AUTO PARTS. HELPFUL SUPPORT.</span>
+                        <h1 className="landing-v3-hero__title">
+                            Find the right part.<br />
+                            Keep <span className="landing-v3-hero__title--highlight">moving.</span>
+                        </h1>
+                        <p className="landing-v3-hero__subtitle">
+                            Search by part name or browse by vehicle system.
+                            Trusted parts for your ride, all in one place.
                         </p>
 
-                        <form className="landing-search" role="search" onSubmit={submitSearch}>
-                            <label className="sr-only" htmlFor="landing-part-search">Search auto parts</label>
-                            <Search size={20} aria-hidden="true" />
+                        {/* Search Bar */}
+                        <form onSubmit={handleSearch} className="landing-v3-search-bar" role="search">
+                            <Search size={18} className="landing-v3-search-icon" aria-hidden="true" />
                             <input
-                                id="landing-part-search"
-                                type="search"
+                                type="text"
                                 value={search}
-                                onChange={(event) => setSearch(event.target.value)}
-                                placeholder="Try “brake pads” or “air filter”"
-                                autoComplete="off"
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Search for parts (e.g. brake pad, alternator...)"
+                                aria-label="Search parts"
                             />
-                            <button type="submit" aria-label="Search parts">
-                                Search <ArrowRight size={17} aria-hidden="true" />
+                            <button type="submit" className="landing-v3-search-btn">
+                                <span>Search</span>
+                                <ArrowRight size={15} />
                             </button>
                         </form>
 
-                        <div className="landing-hero-links">
-                            <Link to="/#landing-categories">Browse by system <ArrowDownRightFallback /></Link>
-                            <span>Looking for a specific fit?</span>
-                        </div>
-                    </div>
-
-                    <div className="landing-hero-visual landing-enter landing-enter--delayed">
-                        <div className="landing-visual-index" aria-hidden="true">CV / PARTS</div>
-                        <div className="landing-hero-photo-frame">
-                            <div
-                                className="landing-carousel"
-                                role="region"
-                                aria-roledescription="carousel"
-                                aria-label="Car parts photos"
-                            >
-                                <div
-                                    className="landing-carousel-track"
-                                    aria-live="off"
-                                    style={{
-                                        width: `${heroSlides.length * 100}%`,
-                                        transform: `translateX(-${activeHeroSlide * (100 / heroSlides.length)}%)`,
-                                    }}
-                                >
-                                    {heroSlides.map((slide, index) => (
-                                        <figure
-                                            className="landing-carousel-slide"
-                                            key={slide.src}
-                                            aria-hidden={index !== activeHeroSlide}
-                                            aria-label={`${index + 1} of ${heroSlides.length}`}
-                                            style={{ flexBasis: `${100 / heroSlides.length}%` }}
-                                        >
-                                            <img
-                                                src={slide.src}
-                                                alt={slide.alt}
-                                                loading="eager"
-                                                decoding="async"
-                                            />
-                                        </figure>
-                                    ))}
-                                </div>
-
-                                <div className="landing-carousel-controls">
-                                    <div className="landing-carousel-indicators" role="group" aria-label="Choose a car parts photo">
-                                        {heroSlides.map((slide, index) => (
-                                            <button
-                                                className={`landing-carousel-indicator ${index === activeHeroSlide ? 'is-active' : ''}`}
-                                                type="button"
-                                                key={slide.src}
-                                                aria-label={`Show photo ${index + 1}: ${slide.alt}`}
-                                                aria-pressed={index === activeHeroSlide}
-                                                onClick={() => setActiveHeroSlide(index)}
-                                            />
-                                        ))}
-                                    </div>
-                                    <span className="landing-carousel-count" aria-hidden="true">
-                                        {String(activeHeroSlide + 1).padStart(2, '0')} / {String(heroSlides.length).padStart(2, '0')}
-                                    </span>
-                                </div>
+                        {/* Popular Tags */}
+                        <div className="landing-v3-popular">
+                            <span className="landing-v3-popular__label">Popular:</span>
+                            <div className="landing-v3-popular__tags">
+                                {POPULAR_SEARCHES.map((tag) => (
+                                    <button
+                                        key={tag}
+                                        type="button"
+                                        onClick={() => handleTagClick(tag)}
+                                        className="landing-v3-popular__tag"
+                                    >
+                                        {tag}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                        <div className="landing-visual-stamp" aria-hidden="true"><span>CAR</span><span>VEX</span></div>
-                        <p className="landing-visual-note">Shop with a little more clarity.</p>
+                    </div>
+
+                    {/* Right Hero Image - Uses landing page.jpg uploaded by the user */}
+                    <div className="landing-v3-hero__visual">
+                        <img
+                            src="/images/landing page.jpg"
+                            alt="CarVex Performance Car"
+                            className="landing-v3-hero__car-img"
+                        />
                     </div>
                 </div>
-                <div className="landing-hero-baseline" aria-hidden="true"><span>CARVEX / AUTO PARTS</span><span>01 — FIND YOUR PART</span></div>
             </section>
 
-            <section className="landing-categories" id="landing-categories" aria-labelledby="landing-categories-title">
-                <div className="landing-section-heading">
-                    <div>
-                        <p className="landing-section-kicker">A good place to start</p>
-                        <h2 id="landing-categories-title">Shop by system</h2>
-                        <p className="landing-section-description">Choose a category and search the catalog for parts that match.</p>
-                    </div>
-                    <Link className="landing-text-link" to="/products">View all parts <ArrowRight size={17} aria-hidden="true" /></Link>
-                </div>
+            {/* FEATURED PARTS SECTION */}
+            <section className="landing-v3-featured">
+                <div className="landing-v3-featured__container">
+                    <header className="landing-v3-featured__header">
+                        <div>
+                            <div className="landing-v3-featured__accent-bar" aria-hidden="true" />
+                            <h2 className="landing-v3-featured__title">Featured Parts</h2>
+                            <p className="landing-v3-featured__subtitle">Top quality car parts, handpicked for you.</p>
+                        </div>
+                        <Link to="/products" className="landing-v3-featured__browse-btn">
+                            <span>Browse All Parts</span>
+                            <ArrowRight size={15} />
+                        </Link>
+                    </header>
 
-                {categoriesLoading ? (
-                    <div className="landing-category-loading" aria-label="Loading categories">
-                        {[0, 1, 2, 3, 4].map((item) => <span key={item} />)}
-                    </div>
-                ) : (
-                    <div className="landing-category-grid">
-                        {visibleCategories.map((category, index) => {
-                            const fallback = category.search;
-                            const query = fallback || category.name;
-                            const Icon = category.Icon || [Disc3, Settings2, Gauge, Zap, Wrench][index % 5];
-                            const note = category.note || 'Browse matching parts';
-
+                    {/* 8 Product Cards Grid */}
+                    <div className="landing-v3-grid">
+                        {FEATURED_PRODUCTS.map((product) => {
+                            const isAdded = addedIds.includes(product.id);
                             return (
-                                <Link
-                                    className="landing-category-tile"
-                                    key={category.id || category.name}
-                                    to={`/products?search=${encodeURIComponent(query)}`}
-                                >
-                                    <span className="category-tile-top"><Icon size={21} strokeWidth={1.7} aria-hidden="true" /><ArrowUpRight size={17} aria-hidden="true" /></span>
-                                    <strong>{category.name}</strong>
-                                    <small>{note}</small>
-                                </Link>
+                                <article key={product.id} className="landing-v3-card">
+                                    {product.badge && (
+                                        <span className="landing-v3-card__badge">{product.badge}</span>
+                                    )}
+
+                                    <div className="landing-v3-card__image-wrap">
+                                        <img src={product.image} alt={product.name} loading="lazy" />
+                                    </div>
+
+                                    <div className="landing-v3-card__body">
+                                        <span className="landing-v3-card__category">{product.category}</span>
+                                        <h3 className="landing-v3-card__title">
+                                            <Link to="/products">{product.name}</Link>
+                                        </h3>
+                                        <div className="landing-v3-card__footer">
+                                            <strong className="landing-v3-card__price">
+                                                {currencyFormatter.format(product.price)}
+                                            </strong>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleAddToCart(product, e)}
+                                                className={`landing-v3-card__cart-btn${isAdded ? ' is-added' : ''}`}
+                                                aria-label={`Add ${product.name} to cart`}
+                                                title="Add to cart"
+                                            >
+                                                {isAdded ? <Check size={16} /> : <ShoppingCart size={16} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </article>
                             );
                         })}
                     </div>
-                )}
-                {!categoriesLoading && categoriesError && (
-                    <div className="landing-category-note" role="status">
-                        <span>Showing quick searches while categories are unavailable.</span>
-                        <button type="button" onClick={loadCategories}>Retry categories</button>
-                    </div>
-                )}
+                </div>
             </section>
 
-            <section className="landing-featured" id="landing-deals" aria-labelledby="landing-featured-title">
-                <div className="landing-featured-topline"><span>CARVEX CATALOG</span><span>02 — EXPLORE PARTS</span></div>
-                <div className="landing-section-heading landing-featured-heading">
-                    <div>
-                        <p className="landing-section-kicker">From the catalog</p>
-                        <h2 id="landing-featured-title">Featured parts</h2>
-                        <p className="landing-section-description">Product information shown here comes from the current catalog.</p>
-                    </div>
-                    <Link className="landing-text-link" to="/products">Browse full catalog <ArrowRight size={17} aria-hidden="true" /></Link>
-                </div>
-
-                {productsLoading ? (
-                    <ProductSkeleton />
-                ) : productsError ? (
-                    <div className="landing-product-state landing-product-state--error" role="alert">
-                        <span className="state-symbol"><Search size={21} aria-hidden="true" /></span>
-                        <h3>We couldn’t load the catalog.</h3>
-                        <p>Check your connection and try again. You can still browse all parts.</p>
-                        <div className="state-actions">
-                            <button type="button" className="landing-button landing-button--dark" onClick={loadProducts}>Try again</button>
-                            <Link className="landing-text-link" to="/products">Open catalog <ArrowRight size={17} aria-hidden="true" /></Link>
+            {/* 4 TRUST BADGES */}
+            <section className="landing-v3-trust">
+                <div className="landing-v3-trust__container">
+                    <div className="landing-v3-trust__item">
+                        <div className="landing-v3-trust__icon-wrap">
+                            <ShieldCheck size={22} />
+                        </div>
+                        <div>
+                            <strong>Trusted Quality</strong>
+                            <small>Genuine &amp; Reliable Parts</small>
                         </div>
                     </div>
-                ) : products.length === 0 ? (
-                    <div className="landing-product-state" role="status">
-                        <span className="state-symbol"><Wrench size={21} aria-hidden="true" /></span>
-                        <h3>No parts to feature yet.</h3>
-                        <p>There are no products in the catalog right now. Please check again later.</p>
-                        <Link className="landing-button landing-button--dark" to="/products">Browse catalog</Link>
+
+                    <div className="landing-v3-trust__item">
+                        <div className="landing-v3-trust__icon-wrap">
+                            <Truck size={22} />
+                        </div>
+                        <div>
+                            <strong>Fast Support</strong>
+                            <small>Get help when you need it</small>
+                        </div>
                     </div>
-                ) : (
-                    <div className="landing-product-grid">
-                        {products.map((product, index) => (
-                            <article className="landing-product-card" key={product.id} style={{ '--card-index': index }}>
-                                <Link className="landing-product-image" to={`/products/${product.id}`} aria-label={`View ${product.name}`}>
-                                    <ProductPhoto product={product} />
-                                    <span className="product-open-icon" aria-hidden="true"><ArrowUpRight size={18} /></span>
-                                </Link>
-                                <div className="landing-product-details">
-                                    {product.brand && <span className="landing-product-brand">{product.brand}</span>}
-                                    <h3><Link to={`/products/${product.id}`}>{product.name}</Link></h3>
-                                    <div className="landing-product-facts">
-                                        <strong>{product.price === null ? 'Price unavailable' : currencyFormatter.format(product.price)}</strong>
-                                        {product.stock === null ? (
-                                            <span className="product-stock product-stock--unknown">Stock details unavailable</span>
-                                        ) : (
-                                            <span className={`product-stock ${product.stock > 0 ? 'product-stock--available' : 'product-stock--empty'}`}>
-                                                {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <Link className="landing-product-link" to={`/products/${product.id}`}>View product <ArrowRight size={15} aria-hidden="true" /></Link>
-                                </div>
-                            </article>
-                        ))}
+
+                    <div className="landing-v3-trust__item">
+                        <div className="landing-v3-trust__icon-wrap">
+                            <Settings size={22} />
+                        </div>
+                        <div>
+                            <strong>Easy Management</strong>
+                            <small>Track your orders</small>
+                        </div>
                     </div>
-                )}
+
+                    <div className="landing-v3-trust__item">
+                        <div className="landing-v3-trust__icon-wrap">
+                            <Headphones size={22} />
+                        </div>
+                        <div>
+                            <strong>Dedicated Support</strong>
+                            <small>We're here to help</small>
+                        </div>
+                    </div>
+                </div>
             </section>
 
-            <section className="landing-contact" id="landing-contact" aria-labelledby="landing-contact-title">
-                <div className="landing-contact-copy">
-                    <p className="landing-section-kicker">Need a second opinion?</p>
-                    <h2 id="landing-contact-title">Let’s find the right fit.</h2>
-                    <p>Tell us what you drive and which part you’re looking for. We’ll help point you in the right direction.</p>
-                </div>
-                <div className="landing-contact-actions">
-                    <a href="mailto:support@carvex.ph"><Mail size={18} aria-hidden="true" /><span><small>Email support</small><strong>support@carvex.ph</strong></span><ArrowUpRight size={17} aria-hidden="true" /></a>
-                    <a href="tel:+639395158432"><Phone size={18} aria-hidden="true" /><span><small>Call the team</small><strong>+63 939 515 8432</strong></span><ArrowUpRight size={17} aria-hidden="true" /></a>
-                    <div className="landing-contact-location"><MapPin size={18} aria-hidden="true" /><span><small>Based in</small><strong>Butuan City, Agusan del Norte</strong></span></div>
+            {/* CALL TO ACTION DARK BANNER - Visual contains ONLY wheel (no duplicate text) */}
+            <section className="landing-v3-cta">
+                <div className="landing-v3-cta__container">
+                    <div className="landing-v3-cta__content">
+                        <span className="landing-v3-cta__eyebrow">Let's keep you on the road</span>
+                        <h2 className="landing-v3-cta__title">
+                            Get the best parts<br />
+                            for your car today.
+                        </h2>
+                        <Link to="/products" className="landing-v3-cta__btn">
+                            <span>Browse Parts</span>
+                            <ArrowRight size={16} />
+                        </Link>
+                    </div>
+
+                    <div className="landing-v3-cta__visual" aria-hidden="true">
+                        <img src="/images/landing-cta-wheel.png" alt="Car wheel" />
+                    </div>
                 </div>
             </section>
         </div>
     );
-}
-
-function ArrowDownRightFallback() {
-    return <ArrowRight className="landing-diagonal-arrow" size={16} aria-hidden="true" />;
 }

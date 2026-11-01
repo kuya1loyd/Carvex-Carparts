@@ -7,6 +7,9 @@ export const orderService = {
     getMyOrders: (config) =>
         api.get('/my-orders', config),
 
+    getOrderSummary: (config) =>
+        api.get('/my-orders/summary', config),
+
     getOrderById: (id, config) =>
         api.get(`/orders/${id}`, config),
 
